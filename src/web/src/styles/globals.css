@@ -1,0 +1,259 @@
+/**
+ * globals.css - IndiVillage Website
+ *
+ * Global CSS styles that apply to the entire application.
+ * This file imports other CSS modules and defines base styles,
+ * resets, and utility classes for consistent styling across
+ * all pages and components.
+ */
+
+/* Import design system variables and component styles */
+@import './variables.css';
+@import './typography.css';
+@import './forms.css';
+@import './animations.css';
+
+/* Import Tailwind CSS - v3.3.2 */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Base layer styles that override Tailwind defaults */
+@layer base {
+  /* Set consistent box-sizing, margin, and padding */
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+  
+  /* Define default HTML/body styles */
+  html {
+    scroll-behavior: smooth;
+    font-size: var(--font-size-base);
+  }
+  
+  body {
+    font-family: var(--font-body);
+    color: var(--color-text-body);
+    background-color: var(--color-background);
+    line-height: var(--line-height-body);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  
+  /* Set selection styles */
+  ::selection {
+    background-color: var(--color-primary);
+    color: var(--color-white);
+  }
+  
+  /* Focus styles for keyboard navigation */
+  :focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(0, 85, 164, 0.4);
+    border-radius: var(--border-radius-sm);
+  }
+  
+  /* Set default image styles to be responsive */
+  img, svg {
+    max-width: 100%;
+    height: auto;
+    display: block;
+  }
+}
+
+/* Component layer styles for reusable UI components */
+@layer components {
+  /* Main content container */
+  .container {
+    width: 100%;
+    max-width: var(--container-width);
+    margin-left: auto;
+    margin-right: auto;
+    padding-left: var(--container-padding);
+    padding-right: var(--container-padding);
+  }
+  
+  /* Narrower content container */
+  .content-container {
+    width: 100%;
+    max-width: var(--content-width);
+    margin-left: auto;
+    margin-right: auto;
+    padding-left: var(--container-padding);
+    padding-right: var(--container-padding);
+  }
+  
+  /* Section spacing */
+  .section {
+    padding-top: var(--spacing-2xl);
+    padding-bottom: var(--spacing-2xl);
+  }
+  
+  .section-sm {
+    padding-top: var(--spacing-xl);
+    padding-bottom: var(--spacing-xl);
+  }
+  
+  .section-lg {
+    padding-top: var(--spacing-3xl);
+    padding-bottom: var(--spacing-3xl);
+  }
+  
+  /* Card components */
+  .card {
+    background-color: var(--color-background);
+    border-radius: var(--border-radius-lg);
+    box-shadow: var(--shadow-sm);
+    overflow: hidden;
+    transition: transform var(--transition-duration-subtle) var(--ease-out),
+                box-shadow var(--transition-duration-subtle) var(--ease-out);
+  }
+  
+  .card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-md);
+  }
+  
+  .card-body {
+    padding: var(--spacing-lg);
+  }
+  
+  .card-header {
+    padding: var(--spacing-lg);
+    border-bottom: var(--border-width-thin) solid var(--color-border-light);
+  }
+  
+  .card-footer {
+    padding: var(--spacing-lg);
+    border-top: var(--border-width-thin) solid var(--color-border-light);
+  }
+  
+  /* Grid containers */
+  .grid-container {
+    display: grid;
+    grid-template-columns: repeat(1, 1fr);
+    gap: var(--spacing-lg);
+  }
+  
+  @media (min-width: 768px) {
+    .grid-container {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+  
+  @media (min-width: 1024px) {
+    .grid-container {
+      grid-template-columns: repeat(4, 1fr);
+    }
+  }
+}
+
+/* Utility layer styles for common patterns */
+@layer utilities {
+  /* Visually hide elements but keep them accessible to screen readers */
+  .visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border-width: 0;
+  }
+  
+  /* Consistent focus outline for accessibility */
+  .focus-outline {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(0, 85, 164, 0.4);
+  }
+  
+  /* Flex utilities */
+  .flex-center {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .flex-between {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  
+  /* Text utilities */
+  .text-ellipsis {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+
+/* Responsive adjustments based on breakpoints defined in variables.css */
+@media (max-width: 375px) {
+  /* Mobile small adjustments */
+  .container, .content-container {
+    padding-left: var(--spacing-sm);
+    padding-right: var(--spacing-sm);
+  }
+  
+  .section {
+    padding-top: var(--spacing-lg);
+    padding-bottom: var(--spacing-lg);
+  }
+  
+  .card-body, .card-header, .card-footer {
+    padding: var(--spacing-md);
+  }
+}
+
+@media (min-width: 376px) and (max-width: 767px) {
+  /* Mobile adjustments */
+  .container, .content-container {
+    padding-left: var(--spacing-md);
+    padding-right: var(--spacing-md);
+  }
+  
+  .section {
+    padding-top: var(--spacing-xl);
+    padding-bottom: var(--spacing-xl);
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1023px) {
+  /* Tablet adjustments */
+  .section {
+    padding-top: var(--spacing-2xl);
+    padding-bottom: var(--spacing-2xl);
+  }
+}
+
+@media (min-width: 1024px) {
+  /* Desktop and above adjustments */
+  .section-lg {
+    padding-top: var(--spacing-4xl);
+    padding-bottom: var(--spacing-4xl);
+  }
+}
+
+/* Reduced motion styles for accessibility */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Dark mode color scheme support */
+@media (prefers-color-scheme: dark) {
+  /* Dark mode styles are primarily handled by CSS variables in variables.css */
+  /* Additional contrast adjustments for dark mode */
+  img {
+    filter: brightness(.8) contrast(1.2);
+  }
+}
