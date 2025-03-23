@@ -1,0 +1,74 @@
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+*.egg
+
+# Virtual environments
+venv/
+env/
+.env
+.venv
+.env.*
+
+# IDE specific files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Testing and coverage
+.coverage
+htmlcov/
+.pytest_cache/
+.tox/
+
+# Local development
+*.db
+*.sqlite3
+uploads/
+
+# Logs
+*.log
+logs/
+
+# Git
+.git/
+.gitignore
+
+# Secrets and credentials
+*.pem
+*.key
+credentials.json
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Docker
+Dockerfile
+docker-compose.yml
+
+# Documentation
+README.md
+docs/
+
+# OS specific files
+.DS_Store
+Thumbs.db
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+
+# Infrastructure
+infrastructure/
+
+# Tests
+tests/
+pytest.ini
