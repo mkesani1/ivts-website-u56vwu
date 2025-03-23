@@ -1,0 +1,10 @@
+User-agent: *
+Disallow: /api/
+Disallow: /upload-sample/processing/
+Disallow: /upload-sample/success/
+Allow: /
+
+User-agent: Googlebot
+Allow: /
+
+Sitemap: https://indivillage.com/sitemap.xml
