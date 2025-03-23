@@ -1,0 +1,366 @@
+/*
+ * animations.css - IndiVillage Website Animation System
+ * 
+ * This file contains reusable animations and transitions that provide
+ * consistent motion design throughout the application.
+ * 
+ * All animations respect user preferences for reduced motion and are
+ * optimized for performance with hardware acceleration where appropriate.
+ */
+
+/* ---------------------------------- */
+/* Keyframe Animations                */
+/* ---------------------------------- */
+
+@keyframes fadeIn {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+@keyframes fadeOut {
+  0% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+@keyframes slideInLeft {
+  0% { transform: translateX(-20px); opacity: 0; }
+  100% { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes slideInRight {
+  0% { transform: translateX(20px); opacity: 0; }
+  100% { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes slideInUp {
+  0% { transform: translateY(20px); opacity: 0; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes slideInDown {
+  0% { transform: translateY(-20px); opacity: 0; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes zoomIn {
+  0% { transform: scale(0.95); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes zoomOut {
+  0% { transform: scale(1); opacity: 1; }
+  100% { transform: scale(0.95); opacity: 0; }
+}
+
+@keyframes pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes progressBar {
+  0% { width: 0%; }
+  100% { width: 100%; }
+}
+
+/* ---------------------------------- */
+/* Base Animation Classes             */
+/* ---------------------------------- */
+
+.animated {
+  animation-duration: var(--transition-duration-standard);
+  animation-timing-function: var(--ease-out);
+  animation-fill-mode: both;
+  will-change: transform, opacity;
+}
+
+.animated-slow {
+  animation-duration: var(--transition-duration-page);
+}
+
+.animated-fast {
+  animation-duration: var(--transition-duration-subtle);
+}
+
+.animated-micro {
+  animation-duration: var(--transition-duration-micro);
+}
+
+/* ---------------------------------- */
+/* Animation Utility Classes          */
+/* ---------------------------------- */
+
+.fade-in {
+  animation: fadeIn var(--transition-duration-standard) var(--ease-out) forwards;
+}
+
+.fade-out {
+  animation: fadeOut var(--transition-duration-standard) var(--ease-in) forwards;
+}
+
+.slide-in-left {
+  animation: slideInLeft var(--transition-duration-standard) var(--ease-out) forwards;
+}
+
+.slide-in-right {
+  animation: slideInRight var(--transition-duration-standard) var(--ease-out) forwards;
+}
+
+.slide-in-up {
+  animation: slideInUp var(--transition-duration-standard) var(--ease-out) forwards;
+}
+
+.slide-in-down {
+  animation: slideInDown var(--transition-duration-standard) var(--ease-out) forwards;
+}
+
+.zoom-in {
+  animation: zoomIn var(--transition-duration-standard) var(--ease-out) forwards;
+}
+
+.zoom-out {
+  animation: zoomOut var(--transition-duration-standard) var(--ease-in) forwards;
+}
+
+.pulse {
+  animation: pulse 2s var(--ease-in-out) infinite;
+}
+
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+.shimmer {
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+.progress-animation {
+  animation: progressBar var(--transition-duration-page) var(--ease-in-out) forwards;
+}
+
+/* ---------------------------------- */
+/* Transition Classes                 */
+/* ---------------------------------- */
+
+.transition-all {
+  transition: all var(--transition-duration-standard) var(--ease-in-out);
+}
+
+.transition-transform {
+  transition: transform var(--transition-duration-standard) var(--ease-in-out);
+}
+
+.transition-opacity {
+  transition: opacity var(--transition-duration-standard) var(--ease-in-out);
+}
+
+.transition-colors {
+  transition: background-color var(--transition-duration-standard) var(--ease-in-out),
+              color var(--transition-duration-standard) var(--ease-in-out),
+              border-color var(--transition-duration-standard) var(--ease-in-out);
+}
+
+.transition-shadow {
+  transition: box-shadow var(--transition-duration-standard) var(--ease-in-out);
+}
+
+/* ---------------------------------- */
+/* Transition Timing Modifiers        */
+/* ---------------------------------- */
+
+.transition-fast {
+  transition-duration: var(--transition-duration-micro);
+}
+
+.transition-slow {
+  transition-duration: var(--transition-duration-page);
+}
+
+/* ---------------------------------- */
+/* Transition Easing Modifiers        */
+/* ---------------------------------- */
+
+.transition-ease-in {
+  transition-timing-function: var(--ease-in);
+}
+
+.transition-ease-out {
+  transition-timing-function: var(--ease-out);
+}
+
+.transition-ease-in-out {
+  transition-timing-function: var(--ease-in-out);
+}
+
+.transition-spring {
+  transition-timing-function: var(--ease-spring);
+}
+
+/* ---------------------------------- */
+/* Interactive Elements               */
+/* ---------------------------------- */
+
+.hover-scale {
+  transition: transform var(--transition-duration-subtle) var(--ease-out);
+}
+
+.hover-scale:hover {
+  transform: scale(1.05);
+}
+
+.hover-lift {
+  transition: transform var(--transition-duration-subtle) var(--ease-out),
+              box-shadow var(--transition-duration-subtle) var(--ease-out);
+}
+
+.hover-lift:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-md);
+}
+
+/* ---------------------------------- */
+/* Component Animations               */
+/* ---------------------------------- */
+
+.loader {
+  display: inline-block;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 3px solid rgba(0, 0, 0, 0.1);
+  border-top-color: var(--color-primary);
+  animation: spin 1s linear infinite;
+  will-change: transform;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 8px;
+  background-color: var(--color-gray-200);
+  border-radius: var(--border-radius-full);
+  overflow: hidden;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background-color: var(--color-primary);
+  border-radius: var(--border-radius-full);
+  transition: width var(--transition-duration-standard) var(--ease-out);
+  will-change: width;
+}
+
+/* ---------------------------------- */
+/* Staggered Animations               */
+/* ---------------------------------- */
+
+.stagger-children > * {
+  opacity: 0;
+  animation-fill-mode: forwards;
+}
+
+.stagger-children > *:nth-child(1) { animation-delay: 0.1s; }
+.stagger-children > *:nth-child(2) { animation-delay: 0.2s; }
+.stagger-children > *:nth-child(3) { animation-delay: 0.3s; }
+.stagger-children > *:nth-child(4) { animation-delay: 0.4s; }
+.stagger-children > *:nth-child(5) { animation-delay: 0.5s; }
+.stagger-children > *:nth-child(n+6) { animation-delay: 0.6s; }
+
+/* ---------------------------------- */
+/* Scroll-based Animations            */
+/* ---------------------------------- */
+
+.animate-on-scroll {
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity var(--transition-duration-standard) var(--ease-out),
+              transform var(--transition-duration-standard) var(--ease-out);
+}
+
+.animate-on-scroll.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ---------------------------------- */
+/* Page Transitions                   */
+/* ---------------------------------- */
+
+.page-transition {
+  animation-duration: var(--transition-duration-page);
+  animation-timing-function: var(--ease-out);
+  animation-fill-mode: both;
+}
+
+/* ---------------------------------- */
+/* Accessibility - Reduced Motion     */
+/* ---------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  
+  .animated,
+  .animated-slow,
+  .animated-fast,
+  .animated-micro,
+  .fade-in,
+  .fade-out,
+  .slide-in-left,
+  .slide-in-right,
+  .slide-in-up,
+  .slide-in-down,
+  .zoom-in,
+  .zoom-out,
+  .page-transition {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+  
+  .animate-on-scroll {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+  
+  .stagger-children > * {
+    opacity: 1;
+    animation: none !important;
+  }
+  
+  .shimmer {
+    background: none;
+    animation: none;
+  }
+  
+  .pulse {
+    animation: none;
+  }
+  
+  .spin {
+    animation-duration: 1s !important; /* Keep this one for functional spinners */
+  }
+  
+  .hover-scale:hover,
+  .hover-lift:hover {
+    transform: none;
+  }
+}
