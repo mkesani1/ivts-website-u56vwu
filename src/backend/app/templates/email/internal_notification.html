@@ -1,0 +1,38 @@
+{% extends "email/base_email.html" %}
+
+{% block title %}IndiVillage - Internal Notification: {{ notification_type }}{% endblock %}
+
+{% block preheader %}Internal notification: {{ notification_type }} - {{ data.summary if data.summary else 'New notification' }}{% endblock %}
+
+{% block content %}
+<!-- Header Section -->
+<h1 style='font-size: 24px; font-weight: bold; margin-bottom: 20px; color: #212529;'>Internal Notification: {{ notification_type }}</h1>
+
+<!-- Notification Summary -->
+<p style='font-size: 16px; line-height: 1.5; margin-bottom: 16px; color: #212529;'>{{ data.summary if data.summary else 'A new notification has been generated.' }}</p>
+
+<!-- Notification Details -->
+<div style='background-color: #F8F9FA; border-radius: 4px; padding: 16px; margin-bottom: 20px;'>
+    <h2 style='font-size: 20px; font-weight: bold; margin-bottom: 16px; color: #212529;'>Details</h2>
+    {% for key, value in data.items() %}
+        {% if key != 'summary' %}
+            <p style='font-size: 16px; line-height: 1.5; margin-bottom: 8px;'><strong>{{ key|title }}:</strong> {{ value }}</p>
+        {% endif %}
+    {% endfor %}
+</div>
+
+<!-- Action Buttons -->
+{% if data.action_url %}
+<div style='text-align: center; margin: 30px 0;'>
+    <a href='{{ data.action_url }}' style='background-color: #0055A4; color: #FFFFFF; padding: 12px 24px; border-radius: 4px; text-decoration: none; display: inline-block; font-weight: bold; text-align: center;'>{{ data.action_text if data.action_text else 'View Details' }}</a>
+</div>
+{% endif %}
+
+<!-- Timestamp -->
+<p style='font-size: 14px; color: #6C757D; margin-top: 30px;'>This notification was generated on {{ timestamp|default(now().strftime('%Y-%m-%d %H:%M:%S UTC')) }}</p>
+{% endblock %}
+
+{% block footer %}
+<p style='font-size: 14px; color: #6C757D; text-align: center;'>This is an internal notification. Please do not reply to this email.</p>
+<p style='font-size: 14px; color: #6C757D; text-align: center;'>© {{ current_year }} {{ company_name }}. All rights reserved.</p>
+{% endblock %}
