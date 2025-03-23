@@ -1,0 +1,59 @@
+{% extends "email/base_email.html" %}
+
+{% block title %}IndiVillage - Your File Upload Confirmation{% endblock %}
+
+{% block preheader %}Thank you for uploading your sample dataset to IndiVillage. We've received your file and will begin processing it shortly.{% endblock %}
+
+{% block content %}
+<!-- Greeting Section -->
+<h1>Thank You for Your Upload</h1>
+<p>Hello {{ name }},</p>
+<p>We've successfully received your sample dataset and will begin processing it shortly.</p>
+
+<!-- Upload Details Section -->
+<h2>Upload Details</h2>
+<table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+    <tr>
+        <td style="padding: 8px; border-bottom: 1px solid #E9ECEF;"><strong>File Name:</strong></td>
+        <td style="padding: 8px; border-bottom: 1px solid #E9ECEF;">{{ upload_data.filename }}</td>
+    </tr>
+    <tr>
+        <td style="padding: 8px; border-bottom: 1px solid #E9ECEF;"><strong>File Size:</strong></td>
+        <td style="padding: 8px; border-bottom: 1px solid #E9ECEF;">{{ upload_data.size|filesizeformat }}</td>
+    </tr>
+    <tr>
+        <td style="padding: 8px; border-bottom: 1px solid #E9ECEF;"><strong>Upload ID:</strong></td>
+        <td style="padding: 8px; border-bottom: 1px solid #E9ECEF;">{{ upload_data.id }}</td>
+    </tr>
+    <tr>
+        <td style="padding: 8px; border-bottom: 1px solid #E9ECEF;"><strong>Upload Date:</strong></td>
+        <td style="padding: 8px; border-bottom: 1px solid #E9ECEF;">{{ upload_data.created_at|date }}</td>
+    </tr>
+    <tr>
+        <td style="padding: 8px; border-bottom: 1px solid #E9ECEF;"><strong>Service Interest:</strong></td>
+        <td style="padding: 8px; border-bottom: 1px solid #E9ECEF;">{{ upload_data.service_interest }}</td>
+    </tr>
+</table>
+
+<!-- Next Steps Section -->
+<h2>What Happens Next?</h2>
+<ol style="margin-bottom: 20px;">
+    <li>Our system will scan your file for security purposes</li>
+    <li>Our AI specialists will analyze your dataset</li>
+    <li>You'll receive a follow-up email with analysis results within 24 hours</li>
+    <li>A member of our team will contact you to discuss potential solutions</li>
+</ol>
+
+<!-- Status Check Section -->
+<p>You can check the status of your upload at any time by visiting your <a href="{{ status_url }}" style="color: #0055A4;">upload status page</a>.</p>
+
+<!-- Call-to-Action Section -->
+<div style="text-align: center; margin: 30px 0;">
+    <a href="{{ status_url }}" style="background-color: #0055A4; color: #FFFFFF; padding: 12px 24px; border-radius: 4px; text-decoration: none; display: inline-block; font-weight: bold;">Check Upload Status</a>
+</div>
+
+<!-- Closing Section -->
+<p>If you have any questions or need assistance, please don't hesitate to contact our support team at <a href="mailto:support@indivillage.com" style="color: #0055A4;">support@indivillage.com</a>.</p>
+<p>Thank you for choosing IndiVillage for your AI service needs.</p>
+<p>Best regards,<br>The IndiVillage Team</p>
+{% endblock %}
