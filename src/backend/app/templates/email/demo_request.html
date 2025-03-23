@@ -1,0 +1,57 @@
+{% extends "email/base_email.html" %}
+
+{% block title %}IndiVillage - Your Demo Request Confirmation{% endblock %}
+
+{% block preheader %}Thank you for requesting a demo of our AI services. We'll be in touch soon to schedule your personalized demonstration.{% endblock %}
+
+{% block content %}
+<!-- Greeting -->
+<p style="font-size: 18px; font-weight: bold; margin-bottom: 16px; color: #212529;">Hello {{ name }},</p>
+
+<!-- Intro paragraph -->
+<p style="font-size: 16px; line-height: 1.5; margin-bottom: 16px; color: #212529;">Thank you for your interest in IndiVillage's AI services. We've received your demo request and our team is excited to show you how our solutions can help your business.</p>
+
+<p style="font-size: 16px; line-height: 1.5; margin-bottom: 16px; color: #212529;">A member of our team will contact you within 1-2 business days to schedule your personalized demonstration at your preferred time.</p>
+
+<!-- Demo details section -->
+<h2 style="font-size: 18px; font-weight: bold; margin-top: 24px; margin-bottom: 16px; color: #212529;">Your Demo Request Details:</h2>
+
+<div style="background-color: #F8F9FA; border-radius: 4px; padding: 16px; margin-bottom: 20px;">
+    <p style="font-size: 16px; line-height: 1.5; margin-bottom: 8px; color: #212529;"><strong>Name:</strong> {{ form_data.first_name }} {{ form_data.last_name }}</p>
+    <p style="font-size: 16px; line-height: 1.5; margin-bottom: 8px; color: #212529;"><strong>Email:</strong> {{ form_data.email }}</p>
+    <p style="font-size: 16px; line-height: 1.5; margin-bottom: 8px; color: #212529;"><strong>Company:</strong> {{ form_data.company }}</p>
+    <p style="font-size: 16px; line-height: 1.5; margin-bottom: 8px; color: #212529;"><strong>Phone:</strong> {{ form_data.phone }}</p>
+    <p style="font-size: 16px; line-height: 1.5; margin-bottom: 8px; color: #212529;"><strong>Services of Interest:</strong> {% for service in form_data.service_interests %}{{ service }}{% if not loop.last %}, {% endif %}{% endfor %}</p>
+    <p style="font-size: 16px; line-height: 1.5; margin-bottom: 8px; color: #212529;"><strong>Preferred Date:</strong> {{ form_data.preferred_date }}</p>
+    <p style="font-size: 16px; line-height: 1.5; margin-bottom: 8px; color: #212529;"><strong>Preferred Time:</strong> {{ form_data.preferred_time }} ({{ form_data.time_zone }})</p>
+    {% if form_data.project_details %}
+    <p style="font-size: 16px; line-height: 1.5; margin-bottom: 8px; color: #212529;"><strong>Project Details:</strong> {{ form_data.project_details }}</p>
+    {% endif %}
+</div>
+
+<!-- Additional information paragraph -->
+<p style="font-size: 16px; line-height: 1.5; margin-bottom: 16px; color: #212529;">If you need to make any changes to your request or have any questions before your demo, please reply to this email or contact our team at <a href="mailto:sales@indivillage.com" style="color: #0055A4; text-decoration: underline;">sales@indivillage.com</a>.</p>
+
+<!-- Preparation section -->
+<h2 style="font-size: 18px; font-weight: bold; margin-top: 24px; margin-bottom: 16px; color: #212529;">Preparing for Your Demo:</h2>
+
+<ul>
+    <li style="font-size: 16px; line-height: 1.5; margin-bottom: 8px; color: #212529;">Consider specific challenges or use cases you'd like to discuss</li>
+    <li style="font-size: 16px; line-height: 1.5; margin-bottom: 8px; color: #212529;">Invite relevant team members who might benefit from the demonstration</li>
+    <li style="font-size: 16px; line-height: 1.5; margin-bottom: 8px; color: #212529;">Prepare any questions you have about our AI services or social impact initiatives</li>
+</ul>
+
+<!-- CTA section -->
+<p style="font-size: 16px; line-height: 1.5; margin-bottom: 16px; color: #212529;">In the meantime, you can learn more about our AI services and social impact initiatives on our website.</p>
+
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" style="margin: 24px 0;">
+    <tr>
+        <td align="center">
+            <a href="{{ website_url }}/services" style="background-color: #0055A4; color: #FFFFFF; padding: 12px 24px; border-radius: 4px; text-decoration: none; display: inline-block; font-weight: bold; text-align: center;">Explore Our Services</a>
+        </td>
+    </tr>
+</table>
+
+<!-- Closing -->
+<p style="font-size: 16px; line-height: 1.5; margin-top: 24px; color: #212529;">We look forward to demonstrating how IndiVillage can help transform your business while creating positive social impact.<br><br>Thank you,<br>The IndiVillage Team</p>
+{% endblock %}
