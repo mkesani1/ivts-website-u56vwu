@@ -1,0 +1,66 @@
+{% extends "email/base_email.html" %}
+
+{% block title %}IndiVillage - Your File Analysis is Complete{% endblock %}
+
+{% block preheader %}We've completed processing your file {{ upload_data.filename }}. Your analysis results are ready to view.{% endblock %}
+
+{% block content %}
+<h1>Your File Analysis is Complete</h1>
+
+<p>Hello {{ name }},</p>
+<p>We're pleased to inform you that we've completed processing your uploaded file and your analysis results are now ready.</p>
+
+<h2>File Details</h2>
+<table style="width: 100%; border-collapse: collapse; margin-bottom: 20px; background-color: #F8F9FA; border-radius: 4px;">
+    <tr>
+        <td style="padding: 8px; border-bottom: 1px solid #E9ECEF;"><strong>File Name:</strong></td>
+        <td style="padding: 8px; border-bottom: 1px solid #E9ECEF;">{{ upload_data.filename }}</td>
+    </tr>
+    <tr>
+        <td style="padding: 8px; border-bottom: 1px solid #E9ECEF;"><strong>File Size:</strong></td>
+        <td style="padding: 8px; border-bottom: 1px solid #E9ECEF;">{{ upload_data.size|filesizeformat }}</td>
+    </tr>
+    <tr>
+        <td style="padding: 8px; border-bottom: 1px solid #E9ECEF;"><strong>Upload ID:</strong></td>
+        <td style="padding: 8px; border-bottom: 1px solid #E9ECEF;">{{ upload_data.id }}</td>
+    </tr>
+    <tr>
+        <td style="padding: 8px; border-bottom: 1px solid #E9ECEF;"><strong>Upload Date:</strong></td>
+        <td style="padding: 8px; border-bottom: 1px solid #E9ECEF;">{{ upload_data.created_at|date }}</td>
+    </tr>
+    <tr>
+        <td style="padding: 8px; border-bottom: 1px solid #E9ECEF;"><strong>Processing Time:</strong></td>
+        <td style="padding: 8px; border-bottom: 1px solid #E9ECEF;">{{ processing_time }}</td>
+    </tr>
+</table>
+
+<h2>Analysis Summary</h2>
+<div style="background-color: #F8F9FA; border-radius: 4px; padding: 16px; margin-bottom: 20px;">
+    {{ processing_results.summary|safe }}
+</div>
+
+<h2>Key Insights</h2>
+<ul style="margin-bottom: 20px;">
+    {% for insight in processing_results.insights %}
+    <li>{{ insight }}</li>
+    {% endfor %}
+</ul>
+
+<div style="text-align: center; margin: 30px 0;">
+    <a href="{{ results_url }}" style="background-color: #0055A4; color: #FFFFFF; padding: 12px 24px; border-radius: 4px; text-decoration: none; display: inline-block; font-weight: bold;">View Full Analysis</a>
+</div>
+
+<h2>Next Steps</h2>
+<p>Based on our analysis of your data, we believe our {{ recommended_service }} service would be the best fit for your needs. A member of our team will contact you shortly to discuss how we can help you implement this solution.</p>
+<p>If you'd like to schedule a consultation sooner, please click the button below:</p>
+
+<div style="text-align: center; margin: 20px 0;">
+    <a href="{{ consultation_url }}" style="background-color: #FFFFFF; color: #0055A4; padding: 12px 24px; border-radius: 4px; text-decoration: none; display: inline-block; font-weight: bold; border: 1px solid #0055A4;">Schedule Consultation</a>
+</div>
+
+<p style="font-size: 14px; color: #6C757D; font-style: italic; margin: 20px 0;">Your uploaded file and analysis results will be securely stored for 30 days, after which they will be automatically deleted in accordance with our data retention policy.</p>
+
+<p>If you have any questions about your analysis results or would like to discuss potential solutions, please don't hesitate to contact us at <a href="mailto:support@indivillage.com" style="color: #0055A4;">support@indivillage.com</a>.</p>
+<p>Thank you for choosing IndiVillage for your AI service needs.</p>
+<p>Best regards,<br>The IndiVillage Team</p>
+{% endblock %}
