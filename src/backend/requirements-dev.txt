@@ -1,0 +1,34 @@
+# IndiVillage.com Backend Development Dependencies
+# -------------------------------------------------
+# This file contains dependencies needed for development, testing, and CI/CD,
+# but not required in production environments.
+# 
+# Note: Install these development dependencies after installing production
+# dependencies from requirements.txt:
+#   pip install -r requirements.txt
+#   pip install -r requirements-dev.txt
+# -------------------------------------------------
+
+# Testing
+pytest>=7.3.1              # Testing framework for Python
+pytest-cov>=4.1.0          # Coverage plugin for pytest
+pytest-mock>=3.10.0        # Mock support for pytest
+pytest-asyncio>=0.21.0     # Pytest support for asyncio
+httpx>=0.24.1              # HTTP client for testing FastAPI applications
+faker>=18.9.0              # Library for generating fake data for testing
+factory-boy>=3.2.1         # Fixture replacement tool for creating test objects
+
+# Code Quality
+black>=23.3.0              # Code formatter for Python to ensure consistent code style
+isort>=5.12.0              # Import sorter for Python to organize and standardize imports
+flake8>=6.0.0              # Code linter for Python to identify coding errors and enforce style
+mypy>=1.3.0                # Static type checker for Python to catch type-related errors
+pre-commit>=3.3.2          # Framework for managing git pre-commit hooks to automate checks
+
+# Security
+bandit>=1.7.5              # Security linter for Python code to find common security issues
+safety>=2.3.5              # Checks dependencies for known security vulnerabilities
+pip-audit>=2.5.0           # Tool for scanning Python dependencies for security vulnerabilities
+
+# Development Tools
+debugpy>=1.6.7             # Debug adapter for Visual Studio Code and other tools
