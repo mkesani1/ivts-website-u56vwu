@@ -1,0 +1,143 @@
+# Prometheus configuration for IndiVillage.com website monitoring
+# This file defines scrape targets, job configurations, alerting rules, and storage settings
+
+# Global configuration
+global:
+  scrape_interval: 15s      # Default interval to scrape targets
+  evaluation_interval: 15s  # How often to evaluate rules
+  scrape_timeout: 10s       # How long before a scrape times out
+
+# Alertmanager configuration - alertmanager v0.25.0
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          - alertmanager:9093  # Alertmanager service name and port
+
+# Rule files that contain alert rule definitions
+rule_files:
+  - alerting-rules.yml
+
+# Scrape configurations defining what resources to monitor
+scrape_configs:
+  # Self-monitoring for Prometheus - prometheus v2.40.0
+  - job_name: 'prometheus'
+    metrics_path: '/metrics'
+    scrape_interval: 15s
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # Node exporter for system metrics collection - node_exporter v1.5.0
+  - job_name: 'node-exporter'
+    metrics_path: '/metrics'
+    scrape_interval: 15s
+    static_configs:
+      - targets: ['node-exporter:9100']
+        labels:
+          instance: 'monitoring-server'
+    ec2_sd_configs:
+      - region: 'us-east-1'  # AWS region for EC2 service discovery
+        port: 9100  # Node exporter port
+        filters:
+          - name: 'tag:Environment'
+            values: ['${ENVIRONMENT}']
+    relabel_configs:
+      - source_labels: ['__meta_ec2_tag_Name']
+        target_label: 'instance'
+      - source_labels: ['__meta_ec2_tag_Role']
+        target_label: 'role'
+
+  # Web tier monitoring (frontend)
+  - job_name: 'web-tier'
+    metrics_path: '/metrics'
+    scrape_interval: 10s  # More frequent for user-facing services
+    static_configs:
+      - targets: ['web-server:9113']  # Nginx with Prometheus exporter
+        labels:
+          service: 'web'
+    ec2_sd_configs:
+      - region: 'us-east-1'
+        port: 9113
+        filters:
+          - name: 'tag:Role'
+            values: ['web']
+          - name: 'tag:Environment'
+            values: ['${ENVIRONMENT}']
+    relabel_configs:
+      - source_labels: ['__meta_ec2_tag_Name']
+        target_label: 'instance'
+      - source_labels: ['__meta_ec2_tag_Version']
+        target_label: 'version'
+
+  # API tier monitoring (backend)
+  - job_name: 'api-tier'
+    metrics_path: '/metrics'
+    scrape_interval: 10s  # More frequent for user-facing services
+    static_configs:
+      - targets: ['api-server:8000']  # API server with metrics endpoint
+        labels:
+          service: 'api'
+    ec2_sd_configs:
+      - region: 'us-east-1'
+        port: 8000
+        filters:
+          - name: 'tag:Role'
+            values: ['api']
+          - name: 'tag:Environment'
+            values: ['${ENVIRONMENT}']
+    relabel_configs:
+      - source_labels: ['__meta_ec2_tag_Name']
+        target_label: 'instance'
+      - source_labels: ['__meta_ec2_tag_Version']
+        target_label: 'version'
+
+  # Blackbox exporter for synthetic monitoring of endpoints - blackbox_exporter v0.23.0
+  - job_name: 'blackbox'
+    metrics_path: '/probe'
+    scrape_interval: 1m  # Check endpoints every minute
+    params:
+      module: ['http_2xx']  # Use the HTTP 2xx probe module
+    static_configs:
+      - targets:
+        - 'https://indivillage.com'
+        - 'https://indivillage.com/services'
+        - 'https://indivillage.com/impact'
+        - 'https://indivillage.com/case-studies'
+        - 'https://indivillage.com/contact'
+        - 'https://api.indivillage.com/health'
+    relabel_configs:
+      - source_labels: ['__address__']
+        target_label: '__param_target'
+      - source_labels: ['__param_target']
+        target_label: 'instance'
+      - target_label: '__address__'
+        replacement: 'blackbox-exporter:9115'  # Blackbox exporter address
+
+  # AWS services monitoring
+  - job_name: 'aws-exporter'
+    metrics_path: '/metrics'
+    scrape_interval: 5m  # AWS metrics change less frequently
+    static_configs:
+      - targets: ['aws-exporter:9686']
+
+# Storage configuration
+storage:
+  tsdb:
+    path: '/prometheus'  # Data storage location
+    retention_time: 15d  # Keep data for 15 days
+    retention_size: 30GB  # Limit total storage to 30GB
+    wal_compression: true  # Compress the write-ahead log
+
+# Remote write configuration for long-term storage
+remote_write:
+  - url: 'https://prometheus-metrics.${AWS_REGION}.amazonaws.com/api/v1/remote_write'
+    queue_config:
+      capacity: 2500
+      max_shards: 200
+      max_samples_per_send: 500
+    sigv4:
+      region: '${AWS_REGION}'  # AWS region for signing requests
+    write_relabel_configs:
+      - source_labels: ['__name__']
+        regex: 'up|node_.*|http_.*|aws_.*|file_.*|form_.*|integration_.*|web_vitals_.*'
+        action: 'keep'  # Only forward these metrics to remote storage
