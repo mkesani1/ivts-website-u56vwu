@@ -1,0 +1,42 @@
+{% extends "email/base_email.html" %}
+
+{% block title %}IndiVillage - Thank you for contacting us{% endblock %}
+
+{% block preheader %}We've received your message and will get back to you soon.{% endblock %}
+
+{% block content %}
+    <!-- Greeting section -->
+    <p style="font-size: 18px; font-weight: bold; margin-bottom: 16px; color: #212529;">Hello {{ name }},</p>
+    
+    <!-- Confirmation message -->
+    <p style="font-size: 16px; line-height: 1.5; margin-bottom: 16px; color: #212529;">Thank you for reaching out to IndiVillage. We've received your message and our team will review it shortly.</p>
+    
+    <p style="font-size: 16px; line-height: 1.5; margin-bottom: 16px; color: #212529;">We typically respond to inquiries within 1-2 business days.</p>
+    
+    <!-- Message details section -->
+    <h3 style="font-size: 18px; font-weight: bold; margin-top: 24px; margin-bottom: 16px; color: #212529;">Your Message Details:</h3>
+    
+    <div style="background-color: #F8F9FA; border-radius: 4px; padding: 16px; margin-bottom: 20px;">
+        <p style="font-size: 16px; line-height: 1.5; margin-bottom: 8px; color: #212529;"><strong>Name:</strong> {{ form_data.name }}</p>
+        <p style="font-size: 16px; line-height: 1.5; margin-bottom: 8px; color: #212529;"><strong>Email:</strong> {{ form_data.email }}</p>
+        <p style="font-size: 16px; line-height: 1.5; margin-bottom: 8px; color: #212529;"><strong>Company:</strong> {{ form_data.company }}</p>
+        <p style="font-size: 16px; line-height: 1.5; margin-bottom: 8px; color: #212529;"><strong>Message:</strong> {{ form_data.message }}</p>
+    </div>
+    
+    <!-- Additional information -->
+    <p style="font-size: 16px; line-height: 1.5; margin-bottom: 16px; color: #212529;">If you have any additional questions or information to share, please don't hesitate to reply to this email.</p>
+    
+    <!-- CTA section -->
+    <p style="font-size: 16px; line-height: 1.5; margin-bottom: 16px; color: #212529;">In the meantime, you can learn more about our AI services and social impact initiatives on our website.</p>
+    
+    <!-- Button for website visit -->
+    <p style="text-align: center; margin: 30px 0;">
+        <a href="{{ website_url }}" style="background-color: #0055A4; color: #FFFFFF; padding: 12px 24px; border-radius: 4px; text-decoration: none; display: inline-block; font-weight: bold; text-align: center;">Visit Our Website</a>
+    </p>
+    
+    <!-- Closing -->
+    <p style="font-size: 16px; line-height: 1.5; margin-top: 24px; color: #212529;">
+        Thank you,<br>
+        The IndiVillage Team
+    </p>
+{% endblock %}
