@@ -1,0 +1,602 @@
+groups:
+  - name: availability
+    description: Alerts related to service availability and uptime
+    rules:
+      - alert: ServiceDown
+        expr: up == 0
+        for: 5m
+        labels:
+          severity: critical
+          category: availability
+        annotations:
+          summary: Service {{ $labels.job }} is down
+          description: Service {{ $labels.job }} on {{ $labels.instance }} has been down for more than 5 minutes.
+          runbook_url: https://wiki.indivillage.com/runbooks/service-down
+
+      - alert: WebsiteUnavailable
+        expr: probe_success{job="blackbox", instance=~"https://indivillage.com.*"} == 0
+        for: 5m
+        labels:
+          severity: critical
+          category: availability
+        annotations:
+          summary: Website endpoint {{ $labels.instance }} is unavailable
+          description: Website endpoint {{ $labels.instance }} has been unavailable for more than 5 minutes.
+          runbook_url: https://wiki.indivillage.com/runbooks/website-unavailable
+
+      - alert: APIUnavailable
+        expr: probe_success{job="blackbox", instance="https://api.indivillage.com/health"} == 0
+        for: 5m
+        labels:
+          severity: critical
+          category: availability
+        annotations:
+          summary: API health endpoint is unavailable
+          description: API health endpoint has been unavailable for more than 5 minutes.
+          runbook_url: https://wiki.indivillage.com/runbooks/api-unavailable
+
+      - alert: InstanceDown
+        expr: up{job=~"web-tier|api-tier"} == 0
+        for: 5m
+        labels:
+          severity: critical
+          category: availability
+        annotations:
+          summary: Instance {{ $labels.instance }} is down
+          description: Instance {{ $labels.instance }} of job {{ $labels.job }} has been down for more than 5 minutes.
+          runbook_url: https://wiki.indivillage.com/runbooks/instance-down
+
+      - alert: DatabaseDown
+        expr: up{job="database"} == 0
+        for: 5m
+        labels:
+          severity: critical
+          category: availability
+        annotations:
+          summary: Database instance {{ $labels.instance }} is down
+          description: Database instance {{ $labels.instance }} has been down for more than 5 minutes.
+          runbook_url: https://wiki.indivillage.com/runbooks/database-down
+
+  - name: performance
+    description: Alerts related to system and application performance
+    rules:
+      - alert: HighCPUUsage
+        expr: 100 - (avg by(instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
+        for: 10m
+        labels:
+          severity: warning
+          category: performance
+        annotations:
+          summary: High CPU usage on {{ $labels.instance }}
+          description: CPU usage on {{ $labels.instance }} has been above 80% for more than 10 minutes.
+          runbook_url: https://wiki.indivillage.com/runbooks/high-cpu-usage
+
+      - alert: CriticalCPUUsage
+        expr: 100 - (avg by(instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 95
+        for: 5m
+        labels:
+          severity: critical
+          category: performance
+        annotations:
+          summary: Critical CPU usage on {{ $labels.instance }}
+          description: CPU usage on {{ $labels.instance }} has been above 95% for more than 5 minutes.
+          runbook_url: https://wiki.indivillage.com/runbooks/critical-cpu-usage
+
+      - alert: HighMemoryUsage
+        expr: 100 * (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) > 85
+        for: 10m
+        labels:
+          severity: warning
+          category: performance
+        annotations:
+          summary: High memory usage on {{ $labels.instance }}
+          description: Memory usage on {{ $labels.instance }} has been above 85% for more than 10 minutes.
+          runbook_url: https://wiki.indivillage.com/runbooks/high-memory-usage
+
+      - alert: CriticalMemoryUsage
+        expr: 100 * (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) > 95
+        for: 5m
+        labels:
+          severity: critical
+          category: performance
+        annotations:
+          summary: Critical memory usage on {{ $labels.instance }}
+          description: Memory usage on {{ $labels.instance }} has been above 95% for more than 5 minutes.
+          runbook_url: https://wiki.indivillage.com/runbooks/critical-memory-usage
+
+      - alert: HighDiskUsage
+        expr: 100 - ((node_filesystem_avail_bytes{mountpoint="/",fstype!="rootfs"} * 100) / node_filesystem_size_bytes{mountpoint="/",fstype!="rootfs"}) > 85
+        for: 30m
+        labels:
+          severity: warning
+          category: performance
+        annotations:
+          summary: High disk usage on {{ $labels.instance }}
+          description: Disk usage on {{ $labels.instance }} has been above 85% for more than 30 minutes.
+          runbook_url: https://wiki.indivillage.com/runbooks/high-disk-usage
+
+      - alert: CriticalDiskUsage
+        expr: 100 - ((node_filesystem_avail_bytes{mountpoint="/",fstype!="rootfs"} * 100) / node_filesystem_size_bytes{mountpoint="/",fstype!="rootfs"}) > 95
+        for: 10m
+        labels:
+          severity: critical
+          category: performance
+        annotations:
+          summary: Critical disk usage on {{ $labels.instance }}
+          description: Disk usage on {{ $labels.instance }} has been above 95% for more than 10 minutes.
+          runbook_url: https://wiki.indivillage.com/runbooks/critical-disk-usage
+
+  - name: api
+    description: Alerts related to API performance and errors
+    rules:
+      - alert: APIHighErrorRate
+        expr: sum(rate(http_requests_total{job="api-tier", status=~"5.."}[5m])) / sum(rate(http_requests_total{job="api-tier"}[5m])) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+          category: api
+        annotations:
+          summary: High API error rate
+          description: API error rate is above 5% for more than 5 minutes.
+          runbook_url: https://wiki.indivillage.com/runbooks/api-high-error-rate
+
+      - alert: APICriticalErrorRate
+        expr: sum(rate(http_requests_total{job="api-tier", status=~"5.."}[5m])) / sum(rate(http_requests_total{job="api-tier"}[5m])) > 0.1
+        for: 5m
+        labels:
+          severity: critical
+          category: api
+        annotations:
+          summary: Critical API error rate
+          description: API error rate is above 10% for more than 5 minutes.
+          runbook_url: https://wiki.indivillage.com/runbooks/api-critical-error-rate
+
+      - alert: APIHighLatency
+        expr: histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job="api-tier"}[5m])) by (le)) > 0.5
+        for: 5m
+        labels:
+          severity: warning
+          category: api
+        annotations:
+          summary: High API latency
+          description: 95th percentile of API request duration is above 500ms for more than 5 minutes.
+          runbook_url: https://wiki.indivillage.com/runbooks/api-high-latency
+
+      - alert: APICriticalLatency
+        expr: histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job="api-tier"}[5m])) by (le)) > 1
+        for: 5m
+        labels:
+          severity: critical
+          category: api
+        annotations:
+          summary: Critical API latency
+          description: 95th percentile of API request duration is above 1s for more than 5 minutes.
+          runbook_url: https://wiki.indivillage.com/runbooks/api-critical-latency
+
+      - alert: APIEndpointHighErrorRate
+        expr: sum(rate(http_requests_total{job="api-tier", status=~"5.."}[5m])) by (handler) / sum(rate(http_requests_total{job="api-tier"}[5m])) by (handler) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          category: api
+        annotations:
+          summary: High error rate for endpoint {{ $labels.handler }}
+          description: Error rate for endpoint {{ $labels.handler }} is above 10% for more than 5 minutes.
+          runbook_url: https://wiki.indivillage.com/runbooks/api-endpoint-high-error-rate
+
+  - name: web
+    description: Alerts related to website performance and errors
+    rules:
+      - alert: WebHighErrorRate
+        expr: sum(rate(nginx_http_requests_total{job="web-tier", status=~"5.."}[5m])) / sum(rate(nginx_http_requests_total{job="web-tier"}[5m])) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+          category: web
+        annotations:
+          summary: High web error rate
+          description: Web error rate is above 5% for more than 5 minutes.
+          runbook_url: https://wiki.indivillage.com/runbooks/web-high-error-rate
+
+      - alert: WebCriticalErrorRate
+        expr: sum(rate(nginx_http_requests_total{job="web-tier", status=~"5.."}[5m])) / sum(rate(nginx_http_requests_total{job="web-tier"}[5m])) > 0.1
+        for: 5m
+        labels:
+          severity: critical
+          category: web
+        annotations:
+          summary: Critical web error rate
+          description: Web error rate is above 10% for more than 5 minutes.
+          runbook_url: https://wiki.indivillage.com/runbooks/web-critical-error-rate
+
+      - alert: WebHighLatency
+        expr: histogram_quantile(0.95, sum(rate(web_page_load_time_seconds_bucket[5m])) by (le)) > 3
+        for: 5m
+        labels:
+          severity: warning
+          category: web
+        annotations:
+          summary: High web page load time
+          description: 95th percentile of web page load time is above 3s for more than 5 minutes.
+          runbook_url: https://wiki.indivillage.com/runbooks/web-high-latency
+
+      - alert: WebCriticalLatency
+        expr: histogram_quantile(0.95, sum(rate(web_page_load_time_seconds_bucket[5m])) by (le)) > 5
+        for: 5m
+        labels:
+          severity: critical
+          category: web
+        annotations:
+          summary: Critical web page load time
+          description: 95th percentile of web page load time is above 5s for more than 5 minutes.
+          runbook_url: https://wiki.indivillage.com/runbooks/web-critical-latency
+
+      - alert: WebVitalsLCPHigh
+        expr: histogram_quantile(0.75, sum(rate(web_vitals_lcp_seconds_bucket[5m])) by (le)) > 2.5
+        for: 10m
+        labels:
+          severity: warning
+          category: web
+        annotations:
+          summary: High Largest Contentful Paint (LCP)
+          description: 75th percentile of LCP is above 2.5s for more than 10 minutes.
+          runbook_url: https://wiki.indivillage.com/runbooks/web-vitals-lcp-high
+
+      - alert: WebVitalsCLSHigh
+        expr: histogram_quantile(0.75, sum(rate(web_vitals_cls_bucket[5m])) by (le)) > 0.1
+        for: 10m
+        labels:
+          severity: warning
+          category: web
+        annotations:
+          summary: High Cumulative Layout Shift (CLS)
+          description: 75th percentile of CLS is above 0.1 for more than 10 minutes.
+          runbook_url: https://wiki.indivillage.com/runbooks/web-vitals-cls-high
+
+  - name: business
+    description: Alerts related to business operations and metrics
+    rules:
+      - alert: FormSubmissionErrorRateHigh
+        expr: sum(increase(form_submission_total{status="error"}[1h])) / sum(increase(form_submission_total[1h])) > 0.1
+        for: 15m
+        labels:
+          severity: warning
+          category: business
+        annotations:
+          summary: High form submission error rate
+          description: Form submission error rate is above 10% for more than 15 minutes.
+          runbook_url: https://wiki.indivillage.com/runbooks/form-submission-error-rate-high
+
+      - alert: FileUploadErrorRateHigh
+        expr: sum(increase(file_upload_total{status="error"}[1h])) / sum(increase(file_upload_total[1h])) > 0.1
+        for: 15m
+        labels:
+          severity: warning
+          category: business
+        annotations:
+          summary: High file upload error rate
+          description: File upload error rate is above 10% for more than 15 minutes.
+          runbook_url: https://wiki.indivillage.com/runbooks/file-upload-error-rate-high
+
+      - alert: FileProcessingErrorRateHigh
+        expr: sum(increase(file_processing_total{status="error"}[1h])) / sum(increase(file_processing_total[1h])) > 0.1
+        for: 15m
+        labels:
+          severity: warning
+          category: business
+        annotations:
+          summary: High file processing error rate
+          description: File processing error rate is above 10% for more than 15 minutes.
+          runbook_url: https://wiki.indivillage.com/runbooks/file-processing-error-rate-high
+
+      - alert: ConversionRateDrop
+        expr: sum(increase(web_analytics_conversion_total[1d])) / sum(increase(web_analytics_sessions_total[1d])) < 0.5 * avg_over_time(sum(increase(web_analytics_conversion_total[7d])) / sum(increase(web_analytics_sessions_total[7d]))[7d:1d])
+        for: 1d
+        labels:
+          severity: warning
+          category: business
+        annotations:
+          summary: Conversion rate drop
+          description: Conversion rate has dropped by more than 50% compared to the 7-day average.
+          runbook_url: https://wiki.indivillage.com/runbooks/conversion-rate-drop
+
+      - alert: DemoRequestRateDrop
+        expr: sum(increase(web_analytics_conversion_total{conversion_type="demo_request"}[1d])) < 0.5 * avg_over_time(sum(increase(web_analytics_conversion_total{conversion_type="demo_request"}[7d]))[7d:1d])
+        for: 1d
+        labels:
+          severity: warning
+          category: business
+        annotations:
+          summary: Demo request rate drop
+          description: Demo request rate has dropped by more than 50% compared to the 7-day average.
+          runbook_url: https://wiki.indivillage.com/runbooks/demo-request-rate-drop
+
+  - name: integrations
+    description: Alerts related to external service integrations
+    rules:
+      - alert: IntegrationHighErrorRate
+        expr: sum(increase(integration_operation_total{success="false"}[1h])) by (integration_name) / sum(increase(integration_operation_total[1h])) by (integration_name) > 0.1
+        for: 15m
+        labels:
+          severity: warning
+          category: integrations
+        annotations:
+          summary: High error rate for {{ $labels.integration_name }} integration
+          description: Error rate for {{ $labels.integration_name }} integration is above 10% for more than 15 minutes.
+          runbook_url: https://wiki.indivillage.com/runbooks/integration-high-error-rate
+
+      - alert: IntegrationCriticalErrorRate
+        expr: sum(increase(integration_operation_total{success="false"}[1h])) by (integration_name) / sum(increase(integration_operation_total[1h])) by (integration_name) > 0.3
+        for: 15m
+        labels:
+          severity: critical
+          category: integrations
+        annotations:
+          summary: Critical error rate for {{ $labels.integration_name }} integration
+          description: Error rate for {{ $labels.integration_name }} integration is above 30% for more than 15 minutes.
+          runbook_url: https://wiki.indivillage.com/runbooks/integration-critical-error-rate
+
+      - alert: IntegrationHighLatency
+        expr: histogram_quantile(0.95, sum(rate(integration_response_time_seconds_bucket[5m])) by (le, integration_name)) > 3
+        for: 15m
+        labels:
+          severity: warning
+          category: integrations
+        annotations:
+          summary: High latency for {{ $labels.integration_name }} integration
+          description: 95th percentile of response time for {{ $labels.integration_name }} integration is above 3s for more than 15 minutes.
+          runbook_url: https://wiki.indivillage.com/runbooks/integration-high-latency
+
+      - alert: CRMIntegrationFailure
+        expr: sum(increase(integration_operation_total{integration_name="hubspot", success="false"}[30m])) > 10
+        for: 15m
+        labels:
+          severity: critical
+          category: integrations
+        annotations:
+          summary: CRM integration failure
+          description: More than 10 CRM integration failures in the last 30 minutes.
+          runbook_url: https://wiki.indivillage.com/runbooks/crm-integration-failure
+
+  - name: database
+    description: Alerts related to database performance and health
+    rules:
+      - alert: DatabaseHighCPUUsage
+        expr: aws_rds_cpuutilization_average > 80
+        for: 15m
+        labels:
+          severity: warning
+          category: database
+        annotations:
+          summary: High CPU usage on database {{ $labels.dimension_DBInstanceIdentifier }}
+          description: CPU usage on database {{ $labels.dimension_DBInstanceIdentifier }} has been above 80% for more than 15 minutes.
+          runbook_url: https://wiki.indivillage.com/runbooks/database-high-cpu-usage
+
+      - alert: DatabaseCriticalCPUUsage
+        expr: aws_rds_cpuutilization_average > 95
+        for: 5m
+        labels:
+          severity: critical
+          category: database
+        annotations:
+          summary: Critical CPU usage on database {{ $labels.dimension_DBInstanceIdentifier }}
+          description: CPU usage on database {{ $labels.dimension_DBInstanceIdentifier }} has been above 95% for more than 5 minutes.
+          runbook_url: https://wiki.indivillage.com/runbooks/database-critical-cpu-usage
+
+      - alert: DatabaseHighConnectionUsage
+        expr: aws_rds_database_connections_average / aws_rds_max_connections * 100 > 80
+        for: 15m
+        labels:
+          severity: warning
+          category: database
+        annotations:
+          summary: High connection usage on database {{ $labels.dimension_DBInstanceIdentifier }}
+          description: Connection usage on database {{ $labels.dimension_DBInstanceIdentifier }} has been above 80% for more than 15 minutes.
+          runbook_url: https://wiki.indivillage.com/runbooks/database-high-connection-usage
+
+      - alert: DatabaseCriticalConnectionUsage
+        expr: aws_rds_database_connections_average / aws_rds_max_connections * 100 > 95
+        for: 5m
+        labels:
+          severity: critical
+          category: database
+        annotations:
+          summary: Critical connection usage on database {{ $labels.dimension_DBInstanceIdentifier }}
+          description: Connection usage on database {{ $labels.dimension_DBInstanceIdentifier }} has been above 95% for more than 5 minutes.
+          runbook_url: https://wiki.indivillage.com/runbooks/database-critical-connection-usage
+
+      - alert: DatabaseHighLatency
+        expr: aws_rds_read_latency_average > 0.1 or aws_rds_write_latency_average > 0.1
+        for: 15m
+        labels:
+          severity: warning
+          category: database
+        annotations:
+          summary: High latency on database {{ $labels.dimension_DBInstanceIdentifier }}
+          description: Database {{ $labels.dimension_DBInstanceIdentifier }} has high read or write latency for more than 15 minutes.
+          runbook_url: https://wiki.indivillage.com/runbooks/database-high-latency
+
+  - name: storage
+    description: Alerts related to storage services
+    rules:
+      - alert: S3HighErrorRate
+        expr: sum(rate(aws_s3_4xx_errors_total[5m])) / sum(rate(aws_s3_requests_total[5m])) > 0.05
+        for: 15m
+        labels:
+          severity: warning
+          category: storage
+        annotations:
+          summary: High S3 error rate
+          description: S3 error rate is above 5% for more than 15 minutes.
+          runbook_url: https://wiki.indivillage.com/runbooks/s3-high-error-rate
+
+      - alert: S3CriticalErrorRate
+        expr: sum(rate(aws_s3_5xx_errors_total[5m])) / sum(rate(aws_s3_requests_total[5m])) > 0.01
+        for: 5m
+        labels:
+          severity: critical
+          category: storage
+        annotations:
+          summary: Critical S3 error rate
+          description: S3 server error rate is above 1% for more than 5 minutes.
+          runbook_url: https://wiki.indivillage.com/runbooks/s3-critical-error-rate
+
+      - alert: RedisHighMemoryUsage
+        expr: 100 * (redis_memory_used_bytes / redis_memory_max_bytes) > 80
+        for: 15m
+        labels:
+          severity: warning
+          category: storage
+        annotations:
+          summary: High Redis memory usage on {{ $labels.instance }}
+          description: Redis memory usage on {{ $labels.instance }} has been above 80% for more than 15 minutes.
+          runbook_url: https://wiki.indivillage.com/runbooks/redis-high-memory-usage
+
+      - alert: RedisCriticalMemoryUsage
+        expr: 100 * (redis_memory_used_bytes / redis_memory_max_bytes) > 95
+        for: 5m
+        labels:
+          severity: critical
+          category: storage
+        annotations:
+          summary: Critical Redis memory usage on {{ $labels.instance }}
+          description: Redis memory usage on {{ $labels.instance }} has been above 95% for more than 5 minutes.
+          runbook_url: https://wiki.indivillage.com/runbooks/redis-critical-memory-usage
+
+      - alert: RedisLowHitRate
+        expr: redis_keyspace_hits_total / (redis_keyspace_hits_total + redis_keyspace_misses_total) < 0.5
+        for: 30m
+        labels:
+          severity: warning
+          category: storage
+        annotations:
+          summary: Low Redis hit rate on {{ $labels.instance }}
+          description: Redis cache hit rate on {{ $labels.instance }} has been below 50% for more than 30 minutes.
+          runbook_url: https://wiki.indivillage.com/runbooks/redis-low-hit-rate
+
+  - name: security
+    description: Alerts related to security events and threats
+    rules:
+      - alert: HighLoginFailureRate
+        expr: sum(increase(auth_login_failures_total[1h])) / sum(increase(auth_login_attempts_total[1h])) > 0.3
+        for: 15m
+        labels:
+          severity: warning
+          category: security
+        annotations:
+          summary: High login failure rate
+          description: Login failure rate is above 30% for more than 15 minutes.
+          runbook_url: https://wiki.indivillage.com/runbooks/high-login-failure-rate
+
+      - alert: BruteForceAttempt
+        expr: sum(increase(auth_login_failures_total{ip=~".*"}[30m])) by (ip) > 10
+        for: 5m
+        labels:
+          severity: critical
+          category: security
+        annotations:
+          summary: Possible brute force attempt from {{ $labels.ip }}
+          description: More than 10 failed login attempts from IP {{ $labels.ip }} in the last 30 minutes.
+          runbook_url: https://wiki.indivillage.com/runbooks/brute-force-attempt
+
+      - alert: HighRateAPIRequests
+        expr: sum(rate(http_requests_total{job="api-tier"}[5m])) by (remote_addr) > 100
+        for: 5m
+        labels:
+          severity: warning
+          category: security
+        annotations:
+          summary: High rate of API requests from {{ $labels.remote_addr }}
+          description: More than 100 requests per second from IP {{ $labels.remote_addr }} for more than 5 minutes.
+          runbook_url: https://wiki.indivillage.com/runbooks/high-rate-api-requests
+
+      - alert: FileUploadScanFailure
+        expr: sum(increase(file_security_rejections_total[1h])) > 5
+        for: 15m
+        labels:
+          severity: critical
+          category: security
+        annotations:
+          summary: Multiple file upload security rejections
+          description: More than 5 file uploads have been rejected by security scanning in the last hour.
+          runbook_url: https://wiki.indivillage.com/runbooks/file-upload-scan-failure
+
+      - alert: UnauthorizedAccessAttempt
+        expr: sum(increase(auth_unauthorized_access_attempts_total[1h])) > 10
+        for: 15m
+        labels:
+          severity: critical
+          category: security
+        annotations:
+          summary: Multiple unauthorized access attempts
+          description: More than 10 unauthorized access attempts in the last hour.
+          runbook_url: https://wiki.indivillage.com/runbooks/unauthorized-access-attempt
+
+  - name: sla
+    description: Alerts related to SLA compliance
+    rules:
+      - alert: WebsiteAvailabilitySLABreach
+        expr: avg_over_time(up{job="web-tier"}[1h]) * 100 < 99.9
+        for: 5m
+        labels:
+          severity: critical
+          category: sla
+        annotations:
+          summary: Website availability SLA breach
+          description: Website availability has been below 99.9% over the last hour.
+          runbook_url: https://wiki.indivillage.com/runbooks/website-availability-sla-breach
+
+      - alert: APIAvailabilitySLABreach
+        expr: avg_over_time(up{job="api-tier"}[1h]) * 100 < 99.95
+        for: 5m
+        labels:
+          severity: critical
+          category: sla
+        annotations:
+          summary: API availability SLA breach
+          description: API availability has been below 99.95% over the last hour.
+          runbook_url: https://wiki.indivillage.com/runbooks/api-availability-sla-breach
+
+      - alert: PageLoadTimeSLABreach
+        expr: sum(rate(web_page_load_time_seconds_count{le="3"}[1h])) / sum(rate(web_page_load_time_seconds_count[1h])) * 100 < 90
+        for: 15m
+        labels:
+          severity: critical
+          category: sla
+        annotations:
+          summary: Page load time SLA breach
+          description: Less than 90% of pages are loading in under 3 seconds over the last hour.
+          runbook_url: https://wiki.indivillage.com/runbooks/page-load-time-sla-breach
+
+      - alert: APIResponseTimeSLABreach
+        expr: sum(rate(http_request_duration_seconds_count{job="api-tier", le="0.5"}[1h])) / sum(rate(http_request_duration_seconds_count{job="api-tier"}[1h])) * 100 < 95
+        for: 15m
+        labels:
+          severity: critical
+          category: sla
+        annotations:
+          summary: API response time SLA breach
+          description: Less than 95% of API requests are completing in under 500ms over the last hour.
+          runbook_url: https://wiki.indivillage.com/runbooks/api-response-time-sla-breach
+
+      - alert: FileUploadSuccessSLABreach
+        expr: sum(increase(file_upload_total{status="success"}[1h])) / sum(increase(file_upload_total[1h])) * 100 < 98
+        for: 15m
+        labels:
+          severity: critical
+          category: sla
+        annotations:
+          summary: File upload success SLA breach
+          description: File upload success rate has been below 98% over the last hour.
+          runbook_url: https://wiki.indivillage.com/runbooks/file-upload-success-sla-breach
+
+      - alert: FormSubmissionSuccessSLABreach
+        expr: sum(increase(form_submission_total{status="success"}[1h])) / sum(increase(form_submission_total[1h])) * 100 < 99.5
+        for: 15m
+        labels:
+          severity: critical
+          category: sla
+        annotations:
+          summary: Form submission success SLA breach
+          description: Form submission success rate has been below 99.5% over the last hour.
+          runbook_url: https://wiki.indivillage.com/runbooks/form-submission-success-sla-breach
