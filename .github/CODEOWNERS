@@ -1,0 +1,56 @@
+# Format: file_pattern owner1 owner2 ...
+# See: https://docs.github.com/en/repositories/managing-your-repository-settings-and-features/customizing-your-repository/about-code-owners
+
+# Default owners for everything in the repo
+* @indivillage/tech-leads
+
+# Documentation team owns all markdown files
+*.md @indivillage/documentation-team
+
+# Backend team owns all backend code
+src/backend/ @indivillage/backend-team
+
+# Security team co-owns security-related backend code
+src/backend/app/security/ @indivillage/security-team @indivillage/backend-team
+
+# API team co-owns API-related backend code
+src/backend/app/api/ @indivillage/api-team @indivillage/backend-team
+
+# Frontend team owns all web code
+src/web/ @indivillage/frontend-team
+
+# UI team co-owns component code
+src/web/src/components/ @indivillage/ui-team @indivillage/frontend-team
+
+# DevOps team owns all infrastructure code
+infrastructure/ @indivillage/devops-team
+
+# DevOps team owns CI/CD workflow configurations
+.github/workflows/ @indivillage/devops-team
+
+# Tech leads own the CODEOWNERS file itself
+.github/CODEOWNERS @indivillage/tech-leads
+
+# Documentation team owns all documentation files
+docs/ @indivillage/documentation-team
+
+# Security team co-owns security documentation
+docs/security/ @indivillage/security-team @indivillage/documentation-team
+
+# Tech leads co-own architecture documentation
+docs/architecture.md @indivillage/tech-leads @indivillage/documentation-team
+
+# Security team co-owns security tests
+src/backend/tests/security/ @indivillage/security-team @indivillage/backend-team
+
+# QA team co-owns frontend tests
+src/web/tests/ @indivillage/qa-team @indivillage/frontend-team
+
+# QA team co-owns backend tests
+src/backend/tests/ @indivillage/qa-team @indivillage/backend-team
+
+# Frontend and security teams co-own package dependencies
+package.json @indivillage/frontend-team @indivillage/security-team
+
+# Backend and security teams co-own Python dependencies
+src/backend/requirements*.txt @indivillage/backend-team @indivillage/security-team
