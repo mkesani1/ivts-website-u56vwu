@@ -1,0 +1,370 @@
+name: Continuous Integration
+
+on:
+  push:
+    branches: [main, develop]
+    paths-ignore:
+      - 'docs/**'
+      - '*.md'
+  pull_request:
+    branches: [main, develop]
+    paths-ignore:
+      - 'docs/**'
+      - '*.md'
+
+env:
+  NODE_VERSION: '18.x'
+  PYTHON_VERSION: '3.10'
+  BACKEND_DIR: 'src/backend'
+  FRONTEND_DIR: 'src/web'
+
+jobs:
+  lint-frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'yarn'
+          cache-dependency-path: '${{ env.FRONTEND_DIR }}/yarn.lock'
+      
+      - name: Install dependencies
+        working-directory: ${{ env.FRONTEND_DIR }}
+        run: yarn install --frozen-lockfile
+      
+      - name: Run ESLint
+        working-directory: ${{ env.FRONTEND_DIR }}
+        run: yarn lint
+      
+      - name: Run TypeScript type checking
+        working-directory: ${{ env.FRONTEND_DIR }}
+        run: yarn type-check
+
+  lint-backend:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+          cache-dependency-path: '${{ env.BACKEND_DIR }}/requirements-dev.txt'
+      
+      - name: Install dependencies
+        working-directory: ${{ env.BACKEND_DIR }}
+        run: pip install -r requirements-dev.txt
+      
+      - name: Run flake8
+        working-directory: ${{ env.BACKEND_DIR }}
+        run: flake8 app tests
+      
+      - name: Run black
+        working-directory: ${{ env.BACKEND_DIR }}
+        run: black --check app tests
+      
+      - name: Run isort
+        working-directory: ${{ env.BACKEND_DIR }}
+        run: isort --check-only --profile black app tests
+      
+      - name: Run mypy
+        working-directory: ${{ env.BACKEND_DIR }}
+        run: mypy app
+
+  test-frontend:
+    needs: [lint-frontend]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'yarn'
+          cache-dependency-path: '${{ env.FRONTEND_DIR }}/yarn.lock'
+      
+      - name: Install dependencies
+        working-directory: ${{ env.FRONTEND_DIR }}
+        run: yarn install --frozen-lockfile
+      
+      - name: Run tests with coverage
+        working-directory: ${{ env.FRONTEND_DIR }}
+        run: yarn test:coverage
+      
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v3
+        with:
+          name: frontend-coverage
+          path: ${{ env.FRONTEND_DIR }}/coverage
+
+  test-backend:
+    needs: [lint-backend]
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:13
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: test_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:6
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+          cache-dependency-path: '${{ env.BACKEND_DIR }}/requirements-dev.txt'
+      
+      - name: Install dependencies
+        working-directory: ${{ env.BACKEND_DIR }}
+        run: pip install -r requirements.txt -r requirements-dev.txt
+      
+      - name: Run tests with coverage
+        working-directory: ${{ env.BACKEND_DIR }}
+        env:
+          TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db
+          REDIS_URL: redis://localhost:6379/0
+          ENVIRONMENT: test
+          TESTING: 'True'
+          SECRET_KEY: test_secret_key_for_testing_purposes_only
+        run: pytest --cov=app --cov-report=xml:coverage.xml --cov-report=html:coverage_html
+      
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v3
+        with:
+          name: backend-coverage
+          path: ${{ env.BACKEND_DIR }}/coverage_html
+
+  build-frontend:
+    needs: [test-frontend]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'yarn'
+          cache-dependency-path: '${{ env.FRONTEND_DIR }}/yarn.lock'
+      
+      - name: Install dependencies
+        working-directory: ${{ env.FRONTEND_DIR }}
+        run: yarn install --frozen-lockfile
+      
+      - name: Build application
+        working-directory: ${{ env.FRONTEND_DIR }}
+        env:
+          NEXT_PUBLIC_API_URL: https://api-dev.indivillage.com
+          NEXT_PUBLIC_RECAPTCHA_SITE_KEY: ${{ secrets.RECAPTCHA_SITE_KEY }}
+        run: yarn build
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+      
+      - name: Build Docker image
+        uses: docker/build-push-action@v4
+        with:
+          context: ${{ env.FRONTEND_DIR }}
+          file: ${{ env.FRONTEND_DIR }}/Dockerfile
+          push: false
+          tags: indivillage/frontend:test
+          cache-from: type=gha,scope=frontend-test
+          cache-to: type=gha,scope=frontend-test,mode=max
+          load: true
+          build-args: |
+            NODE_ENV=production
+            NEXT_PUBLIC_API_URL=https://api-dev.indivillage.com
+            NEXT_PUBLIC_RECAPTCHA_SITE_KEY=${{ secrets.RECAPTCHA_SITE_KEY }}
+      
+      - name: Scan frontend image for vulnerabilities
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: indivillage/frontend:test
+          format: table
+          exit-code: '1'
+          ignore-unfixed: true
+          vuln-type: os,library
+          severity: CRITICAL,HIGH
+
+  build-backend:
+    needs: [test-backend]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+          cache-dependency-path: '${{ env.BACKEND_DIR }}/requirements-dev.txt'
+      
+      - name: Install dependencies
+        working-directory: ${{ env.BACKEND_DIR }}
+        run: pip install -r requirements.txt
+      
+      - name: Verify application startup
+        working-directory: ${{ env.BACKEND_DIR }}
+        env:
+          ENVIRONMENT: test
+          SECRET_KEY: test_secret_key_for_testing_purposes_only
+        run: python -c "import app; print('Application imports successfully')"
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+      
+      - name: Build Docker image
+        uses: docker/build-push-action@v4
+        with:
+          context: ${{ env.BACKEND_DIR }}
+          file: ${{ env.BACKEND_DIR }}/Dockerfile
+          push: false
+          tags: indivillage/backend:test
+          cache-from: type=gha,scope=backend-test
+          cache-to: type=gha,scope=backend-test,mode=max
+          load: true
+          build-args: |
+            ENVIRONMENT=test
+      
+      - name: Scan backend image for vulnerabilities
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: indivillage/backend:test
+          format: table
+          exit-code: '1'
+          ignore-unfixed: true
+          vuln-type: os,library
+          severity: CRITICAL,HIGH
+
+  security-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v2
+        with:
+          languages: javascript, python
+      
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v2
+      
+      - name: Run Trivy filesystem scan for frontend
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: fs
+          scan-ref: ${{ env.FRONTEND_DIR }}
+          format: table
+          exit-code: '0'
+          severity: CRITICAL,HIGH
+      
+      - name: Run Trivy filesystem scan for backend
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: fs
+          scan-ref: ${{ env.BACKEND_DIR }}
+          format: table
+          exit-code: '0'
+          severity: CRITICAL,HIGH
+      
+      - name: Run dependency check for frontend
+        working-directory: ${{ env.FRONTEND_DIR }}
+        run: "yarn audit --level high || echo 'Vulnerabilities found but continuing'"
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      
+      - name: Run dependency check for backend
+        working-directory: ${{ env.BACKEND_DIR }}
+        run: "pip install pip-audit && pip-audit -r requirements.txt || echo 'Vulnerabilities found but continuing'"
+
+  integration-test:
+    needs: [build-frontend, build-backend]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Set up Docker Compose
+        run: docker-compose -f docker-compose.ci.yml up -d
+      
+      - name: Wait for services to start
+        run: sleep 30
+      
+      - name: Run integration tests
+        run: docker-compose -f docker-compose.ci.yml exec -T backend pytest tests/integration
+      
+      - name: Collect logs on failure
+        if: failure()
+        run: docker-compose -f docker-compose.ci.yml logs > integration-test-logs.txt
+      
+      - name: Upload logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v3
+        with:
+          name: integration-test-logs
+          path: integration-test-logs.txt
+      
+      - name: Tear down Docker Compose
+        if: always()
+        run: docker-compose -f docker-compose.ci.yml down -v
+
+  notify-status:
+    needs: [lint-frontend, lint-backend, test-frontend, test-backend, build-frontend, build-backend, security-scan, integration-test]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Check build result
+        id: check-result
+        run: echo "status=${{ needs.lint-frontend.result == 'success' && needs.lint-backend.result == 'success' && needs.test-frontend.result == 'success' && needs.test-backend.result == 'success' && needs.build-frontend.result == 'success' && needs.build-backend.result == 'success' && needs.security-scan.result == 'success' && needs.integration-test.result == 'success' && 'success' || 'failure' }}" >> $GITHUB_OUTPUT
+      
+      - name: Notify success
+        if: steps.check-result.outputs.status == 'success'
+        uses: slackapi/slack-github-action@v1.23.0
+        with:
+          channel-id: ${{ secrets.SLACK_CHANNEL_ID }}
+          slack-message: "✅ CI build successful! Branch: ${{ github.ref_name }} | Commit: ${{ github.sha }}"
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+      
+      - name: Notify failure
+        if: steps.check-result.outputs.status == 'failure'
+        uses: slackapi/slack-github-action@v1.23.0
+        with:
+          channel-id: ${{ secrets.SLACK_CHANNEL_ID }}
+          slack-message: "❌ CI build failed! Branch: ${{ github.ref_name }} | Commit: ${{ github.sha }} | See workflow run: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
