@@ -1,0 +1,136 @@
+version: '3.8'
+
+services:
+  api:
+    image: indivillage-backend
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        ENVIRONMENT: development
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    volumes:
+      - .:/app
+    ports:
+      - "8000:8000"
+    environment:
+      - ENVIRONMENT=development
+      - DEBUG=true
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/indivillage
+      - REDIS_URL=redis://redis:6379/0
+      - SECRET_KEY=development_secret_key
+      - AWS_REGION=us-east-1
+      - AWS_S3_BUCKET_NAME=indivillage-dev
+      - AWS_S3_UPLOAD_BUCKET_NAME=indivillage-uploads-dev
+      - AWS_S3_PROCESSED_BUCKET_NAME=indivillage-processed-dev
+      - MAX_UPLOAD_SIZE_MB=50
+      - ALLOWED_UPLOAD_EXTENSIONS=.csv,.json,.xml,.jpg,.png,.tiff,.mp3,.wav
+      - CORS_ORIGINS=http://localhost:3000,http://localhost:8000
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8000/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+    networks:
+      - indivillage-network
+
+  db:
+    image: postgres:13-alpine
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=indivillage
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+    networks:
+      - indivillage-network
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+    networks:
+      - indivillage-network
+
+  worker:
+    image: indivillage-backend
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        ENVIRONMENT: development
+    command: celery -A app.queue.worker worker --loglevel=info
+    volumes:
+      - .:/app
+    environment:
+      - ENVIRONMENT=development
+      - DEBUG=true
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/indivillage
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/1
+      - CELERY_RESULT_BACKEND=redis://redis:6379/2
+      - SECRET_KEY=development_secret_key
+      - AWS_REGION=us-east-1
+      - AWS_S3_BUCKET_NAME=indivillage-dev
+      - AWS_S3_UPLOAD_BUCKET_NAME=indivillage-uploads-dev
+      - AWS_S3_PROCESSED_BUCKET_NAME=indivillage-processed-dev
+    depends_on:
+      redis:
+        condition: service_healthy
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - indivillage-network
+
+  clamav:
+    image: clamav/clamav:latest
+    ports:
+      - "3310:3310"
+    volumes:
+      - clamav_data:/var/lib/clamav
+    environment:
+      - CLAMAV_NO_FRESHCLAM=false
+      - FRESHCLAM_CHECKS=24
+    healthcheck:
+      test: ["CMD", "clamdscan", "--version"]
+      interval: 60s
+      timeout: 30s
+      retries: 3
+      start_period: 120s
+    restart: unless-stopped
+    networks:
+      - indivillage-network
+
+volumes:
+  postgres_data:
+    driver: local
+  clamav_data:
+    driver: local
+
+networks:
+  indivillage-network:
+    driver: bridge
