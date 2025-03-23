@@ -1,0 +1,215 @@
+name: CD - Development
+
+on:
+  push:
+    branches:
+      - develop
+    paths-ignore:
+      - 'docs/**'
+      - '*.md'
+  workflow_dispatch:
+
+env:
+  NODE_VERSION: '18.x'
+  PYTHON_VERSION: '3.10'
+  TERRAFORM_VERSION: '1.5.0'
+  AWS_REGION: 'us-east-1'
+  ECR_REPOSITORY_FRONTEND: 'indivillage/frontend'
+  ECR_REPOSITORY_BACKEND: 'indivillage/backend'
+  ENVIRONMENT: 'development'
+  BACKEND_DIR: 'src/backend'
+  FRONTEND_DIR: 'src/web'
+  TERRAFORM_DIR: 'infrastructure/terraform/environments/development'
+
+jobs:
+  build-and-push-frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Build and push frontend image
+        uses: docker/build-push-action@v4
+        with:
+          context: ${{ env.FRONTEND_DIR }}
+          file: ${{ env.FRONTEND_DIR }}/Dockerfile
+          push: true
+          tags: ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY_FRONTEND }}:${{ env.ENVIRONMENT }}-${{ github.sha }},${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY_FRONTEND }}:${{ env.ENVIRONMENT }}-latest
+          cache-from: type=gha,scope=frontend-${{ env.ENVIRONMENT }}
+          cache-to: type=gha,scope=frontend-${{ env.ENVIRONMENT }},mode=max
+          build-args: NODE_ENV=production,NEXT_PUBLIC_API_URL=${{ secrets.DEV_API_URL }},NEXT_PUBLIC_RECAPTCHA_SITE_KEY=${{ secrets.RECAPTCHA_SITE_KEY }}
+
+  build-and-push-backend:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Build and push backend image
+        uses: docker/build-push-action@v4
+        with:
+          context: ${{ env.BACKEND_DIR }}
+          file: ${{ env.BACKEND_DIR }}/Dockerfile
+          push: true
+          tags: ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY_BACKEND }}:${{ env.ENVIRONMENT }}-${{ github.sha }},${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY_BACKEND }}:${{ env.ENVIRONMENT }}-latest
+          cache-from: type=gha,scope=backend-${{ env.ENVIRONMENT }}
+          cache-to: type=gha,scope=backend-${{ env.ENVIRONMENT }},mode=max
+          build-args: ENVIRONMENT=development
+
+  deploy-infrastructure:
+    needs: [build-and-push-frontend, build-and-push-backend]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+
+      - name: Terraform Init
+        working-directory: ${{ env.TERRAFORM_DIR }}
+        run: terraform init
+
+      - name: Terraform Validate
+        working-directory: ${{ env.TERRAFORM_DIR }}
+        run: terraform validate
+
+      - name: Terraform Plan
+        working-directory: ${{ env.TERRAFORM_DIR }}
+        run: terraform plan -var="frontend_image=${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY_FRONTEND }}:${{ env.ENVIRONMENT }}-${{ github.sha }}" -var="backend_image=${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY_BACKEND }}:${{ env.ENVIRONMENT }}-${{ github.sha }}" -var-file=terraform.tfvars -out=tfplan
+
+      - name: Terraform Apply
+        working-directory: ${{ env.TERRAFORM_DIR }}
+        run: terraform apply -auto-approve tfplan
+
+  deploy-services:
+    needs: [deploy-infrastructure]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install AWS CLI
+        run: pip install awscli
+
+      - name: Deploy new task definition
+        run: aws ecs update-service --cluster indivillage-${{ env.ENVIRONMENT }} --service indivillage-frontend-${{ env.ENVIRONMENT }} --task-definition indivillage-frontend-${{ env.ENVIRONMENT }}:$(aws ecs describe-task-definition --task-definition indivillage-frontend-${{ env.ENVIRONMENT }} --query 'taskDefinition.revision' --output text) --force-new-deployment && aws ecs update-service --cluster indivillage-${{ env.ENVIRONMENT }} --service indivillage-backend-${{ env.ENVIRONMENT }} --task-definition indivillage-backend-${{ env.ENVIRONMENT }}:$(aws ecs describe-task-definition --task-definition indivillage-backend-${{ env.ENVIRONMENT }} --query 'taskDefinition.revision' --output text) --force-new-deployment
+
+      - name: Wait for deployment stability
+        run: aws ecs wait services-stable --cluster indivillage-${{ env.ENVIRONMENT }} --services indivillage-frontend-${{ env.ENVIRONMENT }} indivillage-backend-${{ env.ENVIRONMENT }}
+
+  run-smoke-tests:
+    needs: [deploy-services]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: pip install -r ${{ env.BACKEND_DIR }}/requirements-dev.txt
+
+      - name: Run smoke tests
+        run: python ${{ env.BACKEND_DIR }}/scripts/smoke_tests.py --environment ${{ env.ENVIRONMENT }} --api-url ${{ secrets.DEV_API_URL }} --web-url ${{ secrets.DEV_WEB_URL }}
+
+  tag-deployment:
+    needs: [run-smoke-tests]
+    runs-on: ubuntu-latest
+    if: success()
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Tag successful deployment
+        run: aws resourcegroupstaggingapi tag-resources --resource-arn-list $(aws ecs describe-services --cluster indivillage-${{ env.ENVIRONMENT }} --services indivillage-frontend-${{ env.ENVIRONMENT }} --query 'services[0].serviceArn' --output text) $(aws ecs describe-services --cluster indivillage-${{ env.ENVIRONMENT }} --services indivillage-backend-${{ env.ENVIRONMENT }} --query 'services[0].serviceArn' --output text) --tags deployment=stable,version=${{ github.sha }}
+
+      - name: Create deployment record
+        run: aws dynamodb put-item --table-name indivillage-deployments --item '{"environment": {"S": "${{ env.ENVIRONMENT }}"}, "timestamp": {"S": "'$(date -u +"%Y-%m-%dT%H:%M:%SZ")'""}, "version": {"S": "${{ github.sha }}"}, "status": {"S": "success"}, "deployed_by": {"S": "${{ github.actor }}"}}'
+        continue-on-error: true
+
+  notify-deployment-status:
+    needs: [tag-deployment, run-smoke-tests]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Check deployment result
+        id: check-result
+        run: echo "status=${{ needs.tag-deployment.result == 'success' && 'success' || 'failure' }}" >> $GITHUB_OUTPUT
+
+      - name: Notify success
+        if: steps.check-result.outputs.status == 'success'
+        uses: slackapi/slack-github-action@v1.23.0
+        with:
+          channel-id: ${{ secrets.SLACK_CHANNEL_ID }}
+          slack-message: "✅ Development deployment successful! Version: ${{ github.sha }} | Environment: ${{ env.ENVIRONMENT }} | Web URL: ${{ secrets.DEV_WEB_URL }}"
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+
+      - name: Notify failure
+        if: steps.check-result.outputs.status == 'failure'
+        uses: slackapi/slack-github-action@v1.23.0
+        with:
+          channel-id: ${{ secrets.SLACK_CHANNEL_ID }}
+          slack-message: "❌ Development deployment failed! Version: ${{ github.sha }} | Environment: ${{ env.ENVIRONMENT }} | See workflow run: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
