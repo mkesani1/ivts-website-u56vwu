@@ -1,0 +1,236 @@
+/**
+ * CSS Variables - IndiVillage Design System
+ *
+ * This file defines all design tokens used throughout the application
+ * to ensure consistent styling and theming. These CSS custom properties
+ * can be accessed from any component.
+ */
+
+:root {
+  /* 
+   * TYPOGRAPHY
+   * Font families, sizes, weights and line heights
+   */
+  
+  /* Font Families */
+  --font-heading: Montserrat, sans-serif;
+  --font-body: Open Sans, sans-serif;
+  
+  /* Base Font Size */
+  --font-size-base: 16px;
+  
+  /* Font Sizes - General Scale */
+  --font-size-xs: 0.75rem;    /* 12px */
+  --font-size-sm: 0.875rem;   /* 14px */
+  --font-size-md: 1rem;       /* 16px */
+  --font-size-lg: 1.125rem;   /* 18px */
+  --font-size-xl: 1.25rem;    /* 20px */
+  --font-size-2xl: 1.5rem;    /* 24px */
+  --font-size-3xl: 1.875rem;  /* 30px */
+  --font-size-4xl: 2.25rem;   /* 36px */
+  --font-size-5xl: 3rem;      /* 48px */
+  
+  /* Font Sizes - Semantic Headings */
+  --font-size-h1: 2.5rem;     /* 40px */
+  --font-size-h2: 2rem;       /* 32px */
+  --font-size-h3: 1.5rem;     /* 24px */
+  --font-size-h4: 1.25rem;    /* 20px */
+  --font-size-h5: 1.125rem;   /* 18px */
+  --font-size-h6: 1rem;       /* 16px */
+  
+  /* Font Weights */
+  --font-weight-light: 300;
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+  
+  /* Line Heights */
+  --line-height-none: 1;
+  --line-height-tight: 1.2;
+  --line-height-normal: 1.5;
+  --line-height-relaxed: 1.625;
+  --line-height-loose: 2;
+  
+  /* Semantic Line Heights */
+  --line-height-heading: 1.2;
+  --line-height-body: 1.5;
+  
+  /*
+   * COLORS
+   * Brand colors, semantic colors, and neutral palette
+   */
+  
+  /* Brand Colors */
+  --color-primary: #0055A4;         /* IndiVillage Blue */
+  --color-primary-light: #1a6ab3;
+  --color-primary-dark: #004080;
+  
+  --color-secondary: #FF671F;       /* IndiVillage Orange */
+  --color-secondary-light: #ff8345;
+  --color-secondary-dark: #e54e00;
+  
+  /* Additional Brand Colors */
+  --color-teal: #046B99;
+  --color-green: #2E8540;
+  
+  /* Semantic Colors */
+  --color-success: #28A745;
+  --color-warning: #FFC107;
+  --color-error: #DC3545;
+  --color-info: #17A2B8;
+  
+  /* Base Colors */
+  --color-white: #FFFFFF;
+  --color-black: #000000;
+  
+  /* Gray Scale */
+  --color-gray-50: #F8F9FA;
+  --color-gray-100: #E9ECEF;
+  --color-gray-200: #DEE2E6;
+  --color-gray-300: #CED4DA;
+  --color-gray-400: #ADB5BD;
+  --color-gray-500: #6C757D;
+  --color-gray-600: #495057;
+  --color-gray-700: #343A40;
+  --color-gray-800: #212529;
+  --color-gray-900: #121416;
+  
+  /* Semantic Application Colors */
+  --color-background: #FFFFFF;
+  --color-background-light: #F8F9FA;
+  --color-background-dark: #E9ECEF;
+  
+  --color-text-heading: #212529;
+  --color-text-body: #343A40;
+  --color-text-muted: #6C757D;
+  --color-text-light: #FFFFFF;
+  
+  --color-border: #DEE2E6;
+  --color-border-light: #E9ECEF;
+  --color-border-dark: #CED4DA;
+  
+  /*
+   * SPACING
+   * Consistent spacing scale throughout the application
+   */
+  --spacing-xs: 0.25rem;    /* 4px */
+  --spacing-sm: 0.5rem;     /* 8px */
+  --spacing-md: 1rem;       /* 16px */
+  --spacing-lg: 1.5rem;     /* 24px */
+  --spacing-xl: 2rem;       /* 32px */
+  --spacing-2xl: 3rem;      /* 48px */
+  --spacing-3xl: 4rem;      /* 64px */
+  --spacing-4xl: 6rem;      /* 96px */
+  
+  /* Layout */
+  --container-width: 1200px;
+  --content-width: 800px;
+  --container-padding: 1rem;
+  
+  /*
+   * BORDERS
+   * Border widths, radii
+   */
+  --border-width-thin: 1px;
+  --border-width-medium: 2px;
+  --border-width-thick: 4px;
+  
+  --border-radius-none: 0;
+  --border-radius-xs: 0.125rem;   /* 2px */
+  --border-radius-sm: 0.25rem;    /* 4px */
+  --border-radius-md: 0.375rem;   /* 6px */
+  --border-radius-lg: 0.5rem;     /* 8px */
+  --border-radius-xl: 0.75rem;    /* 12px */
+  --border-radius-2xl: 1rem;      /* 16px */
+  --border-radius-full: 9999px;
+  
+  /*
+   * SHADOWS
+   * Elevation system
+   */
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
+  --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.1);
+  --shadow-inner: inset 0 2px 4px rgba(0, 0, 0, 0.05);
+  
+  /*
+   * ANIMATIONS & TRANSITIONS
+   * Duration and easing functions
+   */
+  --transition-duration-micro: 150ms;
+  --transition-duration-subtle: 200ms;
+  --transition-duration-standard: 300ms;
+  --transition-duration-page: 500ms;
+  
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-spring: cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  
+  /*
+   * Z-INDEX
+   * Stacking order system
+   */
+  --z-negative: -1;
+  --z-0: 0;
+  --z-10: 10;
+  --z-20: 20;
+  --z-30: 30;
+  --z-40: 40;
+  --z-50: 50;
+  --z-auto: auto;
+  
+  /*
+   * BREAKPOINTS
+   * Responsive design breakpoints
+   */
+  --breakpoint-xs: 375px;   /* Mobile small */
+  --breakpoint-sm: 640px;   /* Mobile large */
+  --breakpoint-md: 768px;   /* Tablet */
+  --breakpoint-lg: 1024px;  /* Desktop */
+  --breakpoint-xl: 1280px;  /* Large desktop */
+  --breakpoint-2xl: 1440px; /* Extra large desktop */
+}
+
+/*
+ * RESPONSIVE ADJUSTMENTS
+ * Variables that change at different screen sizes
+ */
+@media (min-width: 768px) {
+  :root {
+    --container-padding: 1.5rem;
+    --font-size-h1: 3rem;      /* 48px */
+    --font-size-h2: 2.25rem;   /* 36px */
+    --font-size-h3: 1.75rem;   /* 28px */
+  }
+}
+
+@media (min-width: 1024px) {
+  :root {
+    --container-padding: 2rem;
+    --font-size-h1: 3.5rem;    /* 56px */
+  }
+}
+
+/*
+ * DARK MODE
+ * Variables adjusted for dark color scheme
+ */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-background: #121416;
+    --color-background-light: #212529;
+    --color-background-dark: #343A40;
+    
+    --color-text-heading: #FFFFFF;
+    --color-text-body: #E9ECEF;
+    --color-text-muted: #ADB5BD;
+    
+    --color-border: #495057;
+    --color-border-light: #343A40;
+    --color-border-dark: #6C757D;
+  }
+}
