@@ -1,0 +1,77 @@
+{% extends "email/base_email.html" %}
+
+{% block title %}IndiVillage - Issue with Your File Upload{% endblock %}
+
+{% block preheader %}We encountered an issue while processing your file {{ upload_data.filename }}. Please review the details and next steps.{% endblock %}
+
+{% block content %}
+<h1>We Encountered an Issue with Your File</h1>
+
+<p>Hello {{ name }},</p>
+
+<p>We're sorry to inform you that we encountered an issue while processing your uploaded file.</p>
+
+<h2>File Details</h2>
+<table style="width: 100%; border-collapse: collapse; margin-bottom: 20px; background-color: #F8F9FA; border-radius: 4px;">
+    <tr>
+        <td style="padding: 8px; border-bottom: 1px solid #E9ECEF;"><strong>File Name:</strong></td>
+        <td style="padding: 8px; border-bottom: 1px solid #E9ECEF;">{{ upload_data.filename }}</td>
+    </tr>
+    <tr>
+        <td style="padding: 8px; border-bottom: 1px solid #E9ECEF;"><strong>File Size:</strong></td>
+        <td style="padding: 8px; border-bottom: 1px solid #E9ECEF;">{{ upload_data.size|filesizeformat }}</td>
+    </tr>
+    <tr>
+        <td style="padding: 8px; border-bottom: 1px solid #E9ECEF;"><strong>Upload ID:</strong></td>
+        <td style="padding: 8px; border-bottom: 1px solid #E9ECEF;">{{ upload_data.id }}</td>
+    </tr>
+    <tr>
+        <td style="padding: 8px; border-bottom: 1px solid #E9ECEF;"><strong>Upload Date:</strong></td>
+        <td style="padding: 8px; border-bottom: 1px solid #E9ECEF;">{{ upload_data.created_at|date }}</td>
+    </tr>
+    <tr>
+        <td style="padding: 8px; border-bottom: 1px solid #E9ECEF;"><strong>Service Interest:</strong></td>
+        <td style="padding: 8px; border-bottom: 1px solid #E9ECEF;">{{ upload_data.service_interest }}</td>
+    </tr>
+</table>
+
+<h2>What Went Wrong</h2>
+<div style="background-color: #FFF3F3; border-left: 4px solid #DC3545; padding: 16px; margin-bottom: 20px; border-radius: 0 4px 4px 0;">
+    <p style="margin-top: 0;"><strong>Error:</strong> {{ error_message }}</p>
+</div>
+
+<h2>Troubleshooting Suggestions</h2>
+<p>Here are some common reasons for processing failures and how to address them:</p>
+<ul style="margin-bottom: 20px;">
+    <li><strong>File Format Issues:</strong> Ensure your file is in one of our supported formats (CSV, JSON, XML, Excel, common image formats).</li>
+    <li><strong>File Structure:</strong> Check that your file follows standard formatting for its type (proper CSV delimiters, valid JSON structure, etc.).</li>
+    <li><strong>File Size:</strong> Files larger than 50MB may need special handling. Consider reducing the file size or using a sample of your data.</li>
+    <li><strong>Special Characters:</strong> Some special characters or encoding issues can cause processing problems. Try saving your file with UTF-8 encoding.</li>
+    <li><strong>Security Issues:</strong> If your file was flagged by our security system, it may contain potentially harmful content.</li>
+</ul>
+
+<h2>Next Steps</h2>
+<p>You can try one of the following options:</p>
+<ol style="margin-bottom: 20px;">
+    <li>Review the troubleshooting suggestions above and upload a modified version of your file.</li>
+    <li>Try uploading a different sample file that may better represent your data.</li>
+    <li>Contact our support team for assistance with your specific file.</li>
+</ol>
+
+<div style="text-align: center; margin: 30px 0;">
+    <a href="{{ upload_url }}" style="background-color: #0055A4; color: #FFFFFF; padding: 12px 24px; border-radius: 4px; text-decoration: none; display: inline-block; font-weight: bold;">Try Another Upload</a>
+</div>
+
+<div style="text-align: center; margin: 20px 0;">
+    <a href="{{ contact_url }}" style="background-color: #FFFFFF; color: #0055A4; padding: 12px 24px; border-radius: 4px; text-decoration: none; display: inline-block; font-weight: bold; border: 1px solid #0055A4;">Contact Support</a>
+</div>
+
+<p style="font-size: 14px; color: #6C757D; font-style: italic; margin: 20px 0;">Your uploaded file has been securely stored and will be automatically deleted after 30 days in accordance with our data retention policy.</p>
+
+<p>If you have any questions or need assistance, please don't hesitate to contact our support team at <a href="mailto:support@indivillage.com" style="color: #0055A4;">support@indivillage.com</a>.</p>
+
+<p>Thank you for your understanding and for choosing IndiVillage for your AI service needs.</p>
+
+<p>Best regards,<br>
+The IndiVillage Team</p>
+{% endblock %}
