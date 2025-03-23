@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="format-detection" content="telephone=no, date=no, address=no, email=no, url=no">
+    <meta name="color-scheme" content="light">
+    <meta name="supported-color-schemes" content="light">
+    <!-- Title block: Override to customize email title -->
+    <title>{% block title %}IndiVillage - {{ subject }}{% endblock %}</title>
+    
+    <!-- MSO conditional comments for Outlook compatibility -->
+    <!--[if mso]>
+    <xml>
+        <o:OfficeDocumentSettings>
+            <o:PixelsPerInch>96</o:PixelsPerInch>
+        </o:OfficeDocumentSettings>
+    </xml>
+    <![endif]-->
+    
+    <!-- Email styles: Keep these styles to maintain consistent branding -->
+    <style>
+        /* Reset styles for email client compatibility */
+        body, p, div, h1, h2, h3, h4, h5, h6 {
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            font-family: 'Montserrat', Arial, sans-serif;
+            background-color: #F8F9FA;
+            color: #212529;
+            font-size: 16px;
+            line-height: 1.5;
+            -webkit-text-size-adjust: 100%;
+            -ms-text-size-adjust: 100%;
+        }
+        
+        /* Table styles for layout consistency across email clients */
+        table {
+            border-spacing: 0;
+            border-collapse: collapse;
+            mso-table-lspace: 0pt;
+            mso-table-rspace: 0pt;
+        }
+        
+        table td {
+            border-collapse: collapse;
+        }
+        
+        img {
+            border: 0;
+            height: auto;
+            line-height: 100%;
+            outline: none;
+            text-decoration: none;
+            -ms-interpolation-mode: bicubic;
+        }
+        
+        /* Typography styles - maintain brand consistency */
+        h1 {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            color: #212529;
+        }
+        
+        h2 {
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 16px;
+            color: #212529;
+        }
+        
+        h3 {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 12px;
+            color: #212529;
+        }
+        
+        p {
+            font-size: 16px;
+            line-height: 1.5;
+            margin-bottom: 16px;
+            color: #212529;
+        }
+        
+        a {
+            color: #0055A4;
+            text-decoration: underline;
+        }
+        
+        .small {
+            font-size: 14px;
+            line-height: 1.5;
+            color: #6C757D;
+        }
+        
+        /* Button styles - use for calls to action */
+        .button-primary {
+            background-color: #0055A4;
+            color: #FFFFFF !important;
+            padding: 12px 24px;
+            border-radius: 4px;
+            text-decoration: none;
+            display: inline-block;
+            font-weight: bold;
+            text-align: center;
+            mso-padding-alt: 0;
+            mso-border-alt: 10px solid #0055A4;
+        }
+        
+        .button-secondary {
+            background-color: #FFFFFF;
+            color: #0055A4 !important;
+            padding: 12px 24px;
+            border-radius: 4px;
+            text-decoration: none;
+            display: inline-block;
+            font-weight: bold;
+            text-align: center;
+            border: 1px solid #0055A4;
+            mso-padding-alt: 0;
+            mso-border-alt: 10px solid #FFFFFF;
+        }
+        
+        /* Container styles for layout structure */
+        .container {
+            width: 100%;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            text-align: center;
+            padding: 20px 0;
+        }
+        
+        .content {
+            background-color: #FFFFFF;
+            border-radius: 8px;
+            padding: 30px;
+            margin-bottom: 20px;
+        }
+        
+        .footer {
+            text-align: center;
+            padding: 20px 0;
+        }
+        
+        .card {
+            background-color: #F8F9FA;
+            border-radius: 4px;
+            padding: 16px;
+            margin-bottom: 20px;
+        }
+        
+        .divider {
+            border-top: 1px solid #E9ECEF;
+            margin: 20px 0;
+        }
+        
+        .spacer {
+            height: 20px;
+        }
+        
+        /* Responsive styles for mobile devices */
+        @media screen and (max-width: 600px) {
+            .container {
+                width: 100% !important;
+            }
+            
+            .content {
+                padding: 20px !important;
+            }
+            
+            .button-primary, .button-secondary {
+                display: block !important;
+                width: 100% !important;
+                box-sizing: border-box !important;
+            }
+        }
+    </style>
+</head>
+<body style="margin: 0; padding: 0; width: 100%; background-color: #F8F9FA;">
+    <!-- Preheader text (hidden but shown in email clients preview) -->
+    <!-- Override the preheader block to provide a summary of the email content -->
+    <div style="display: none; max-height: 0; overflow: hidden;">
+        {% block preheader %}{% endblock %}
+    </div>
+    <!-- End preheader -->
+    
+    <!-- Email container -->
+    <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="background-color: #F8F9FA;">
+        <tr>
+            <td align="center" style="padding: 20px 10px;">
+                <!-- Email wrapper -->
+                <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="max-width: 600px;">
+                    <!-- Header section with logo -->
+                    <tr>
+                        <td align="center" class="header">
+                            <img src="{{ logo_url }}" alt="IndiVillage Logo" style="max-width: 200px; height: auto; margin: 20px 0;">
+                        </td>
+                    </tr>
+                    
+                    <!-- Content section - Override the content block in child templates -->
+                    <tr>
+                        <td class="content" style="background-color: #FFFFFF; border-radius: 8px; padding: 30px; margin-bottom: 20px;">
+                            {% block content %}{% endblock %}
+                        </td>
+                    </tr>
+                    
+                    <!-- Footer section - Can be overridden or extended in child templates -->
+                    <tr>
+                        <td class="footer" style="text-align: center; padding: 20px 0;">
+                            {% block footer %}
+                            <p style="font-size: 14px; color: #6C757D; text-align: center;">© {{ current_year }} {{ company_name }}. All rights reserved.</p>
+                            <p style="font-size: 12px; color: #6C757D; text-align: center;">{{ company_address }}</p>
+                            <p style="font-size: 12px; color: #6C757D; text-align: center;">
+                                <a href="{{ unsubscribe_url }}" style="color: #6C757D;">Unsubscribe</a> |
+                                <a href="{{ website_url }}" style="color: #6C757D;">Visit Website</a>
+                            </p>
+                            {% endblock %}
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>
