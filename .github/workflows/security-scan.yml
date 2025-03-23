@@ -1,0 +1,267 @@
+name: Security Scan
+
+on:
+  schedule:
+    - cron: '0 0 * * 0'  # Run every Sunday at midnight
+  workflow_dispatch:  # Allow manual triggering
+  push:
+    branches:
+      - main
+    paths:
+      - 'src/backend/**'
+      - 'src/web/**'
+      - '.github/workflows/security-scan.yml'
+
+env:
+  NODE_VERSION: '18.x'
+  PYTHON_VERSION: '3.10'
+  BACKEND_DIR: 'src/backend'
+  FRONTEND_DIR: 'src/web'
+
+jobs:
+  dependency-scan:
+    name: Scan Dependencies for Vulnerabilities
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'yarn'
+          cache-dependency-path: '${{ env.FRONTEND_DIR }}/yarn.lock'
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+          cache-dependency-path: '${{ env.BACKEND_DIR }}/requirements-dev.txt'
+      
+      - name: Install frontend dependencies
+        working-directory: ${{ env.FRONTEND_DIR }}
+        run: yarn install --frozen-lockfile
+      
+      - name: Install backend dependencies
+        working-directory: ${{ env.BACKEND_DIR }}
+        run: pip install -r requirements.txt -r requirements-dev.txt
+      
+      - name: Install security tools
+        run: pip install safety pip-audit
+      
+      - name: Run npm audit
+        working-directory: ${{ env.FRONTEND_DIR }}
+        run: yarn audit --json > npm-audit-results.json || true
+      
+      - name: Run pip-audit
+        working-directory: ${{ env.BACKEND_DIR }}
+        run: pip-audit -r requirements.txt -f json > pip-audit-results.json || true
+      
+      - name: Run safety check
+        working-directory: ${{ env.BACKEND_DIR }}
+        run: safety check -r requirements.txt --json > safety-check-results.json || true
+      
+      - name: Process audit results
+        run: python .github/scripts/process_security_results.py
+      
+      - name: Upload audit results
+        uses: actions/upload-artifact@v3
+        with:
+          name: dependency-scan-results
+          path: security-report.md
+
+  code-scanning:
+    name: Static Code Analysis
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      actions: read
+      contents: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v2
+        with:
+          languages: javascript, python
+          queries: security-extended,security-and-quality
+      
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v2
+      
+      - name: Run ESLint security rules
+        working-directory: ${{ env.FRONTEND_DIR }}
+        run: yarn lint --config .eslintrc.security.js --format json --output-file eslint-results.json || true
+      
+      - name: Run Bandit for Python
+        working-directory: ${{ env.BACKEND_DIR }}
+        run: pip install bandit && bandit -r app -f json -o bandit-results.json || true
+      
+      - name: Upload code scanning results
+        uses: actions/upload-artifact@v3
+        with:
+          name: code-scanning-results
+          path: |
+            ${{ env.FRONTEND_DIR }}/eslint-results.json
+            ${{ env.BACKEND_DIR }}/bandit-results.json
+
+  container-scanning:
+    name: Container Image Scanning
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+      
+      - name: Build frontend image
+        uses: docker/build-push-action@v4
+        with:
+          context: ${{ env.FRONTEND_DIR }}
+          file: ${{ env.FRONTEND_DIR }}/Dockerfile
+          push: false
+          tags: indivillage/frontend:scan
+          cache-from: type=gha,scope=frontend-scan
+          cache-to: type=gha,scope=frontend-scan,mode=max
+          load: true
+          build-args: NODE_ENV=production
+      
+      - name: Build backend image
+        uses: docker/build-push-action@v4
+        with:
+          context: ${{ env.BACKEND_DIR }}
+          file: ${{ env.BACKEND_DIR }}/Dockerfile
+          push: false
+          tags: indivillage/backend:scan
+          cache-from: type=gha,scope=backend-scan
+          cache-to: type=gha,scope=backend-scan,mode=max
+          load: true
+          build-args: ENVIRONMENT=production
+      
+      - name: Scan frontend image
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: indivillage/frontend:scan
+          format: sarif
+          output: trivy-frontend-results.sarif
+          severity: CRITICAL,HIGH,MEDIUM
+          ignore-unfixed: true
+      
+      - name: Scan backend image
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: indivillage/backend:scan
+          format: sarif
+          output: trivy-backend-results.sarif
+          severity: CRITICAL,HIGH,MEDIUM
+          ignore-unfixed: true
+      
+      - name: Upload Trivy scan results
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: trivy-frontend-results.sarif
+          category: trivy-frontend
+      
+      - name: Upload Trivy scan results
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: trivy-backend-results.sarif
+          category: trivy-backend
+
+  secret-detection:
+    name: Secrets and Sensitive Information
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0  # Required for Gitleaks to scan git history
+      
+      - name: Run Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
+      
+      - name: Run trufflehog
+        run: pip install trufflehog && trufflehog --json --regex --entropy=True . > trufflehog-results.json || true
+      
+      - name: Upload secret detection results
+        uses: actions/upload-artifact@v3
+        with:
+          name: secret-detection-results
+          path: trufflehog-results.json
+
+  compliance-checks:
+    name: Security Compliance Checks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      
+      - name: Install compliance tools
+        run: pip install checkov
+      
+      - name: Run Checkov
+        run: checkov -d . --framework dockerfile,kubernetes,terraform,secrets --output json > checkov-results.json || true
+      
+      - name: Check security headers
+        run: python .github/scripts/check_security_headers.py
+      
+      - name: Upload compliance results
+        uses: actions/upload-artifact@v3
+        with:
+          name: compliance-check-results
+          path: checkov-results.json
+
+  security-report:
+    name: Generate Security Report
+    needs: [dependency-scan, code-scanning, container-scanning, secret-detection, compliance-checks]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      
+      - name: Download all artifacts
+        uses: actions/download-artifact@v3
+      
+      - name: Generate security report
+        run: python .github/scripts/generate_security_report.py
+      
+      - name: Upload security report
+        uses: actions/upload-artifact@v3
+        with:
+          name: security-report
+          path: security-report.md
+      
+      - name: Notify on critical issues
+        if: ${{ env.CRITICAL_ISSUES == 'true' }}
+        uses: slackapi/slack-github-action@v1.23.0
+        with:
+          channel-id: ${{ secrets.SECURITY_SLACK_CHANNEL_ID }}
+          slack-message: "⚠️ Critical security issues found in the latest scan! Please review the security report: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          CRITICAL_ISSUES: ${{ steps.report.outputs.has_critical_issues }}
+      
+      - name: Notify scan completion
+        uses: slackapi/slack-github-action@v1.23.0
+        with:
+          channel-id: ${{ secrets.SECURITY_SLACK_CHANNEL_ID }}
+          slack-message: "✅ Security scan completed for ${{ github.repository }}. Report available at: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
