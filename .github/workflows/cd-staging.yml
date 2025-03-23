@@ -1,0 +1,328 @@
+name: CD - Staging
+
+on:
+  push:
+    branches:
+      - staging
+    paths-ignore:
+      - 'docs/**'
+      - '*.md'
+  workflow_dispatch:
+    inputs:
+      deploy_version:
+        description: 'Version to deploy (defaults to latest successful development build)'
+        required: false
+        type: string
+
+env:
+  NODE_VERSION: '18.x'
+  PYTHON_VERSION: '3.10'
+  TERRAFORM_VERSION: '1.5.0'
+  AWS_REGION: 'us-east-1'
+  ECR_REPOSITORY_FRONTEND: 'indivillage/frontend'
+  ECR_REPOSITORY_BACKEND: 'indivillage/backend'
+  ENVIRONMENT: 'staging'
+  BACKEND_DIR: 'src/backend'
+  FRONTEND_DIR: 'src/web'
+  TERRAFORM_DIR: 'infrastructure/terraform/environments/staging'
+
+jobs:
+  get-deployment-version:
+    runs-on: ubuntu-latest
+    outputs:
+      deploy_sha: ${{ steps.set-version.outputs.deploy_sha }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+      
+      - name: Set deployment version
+        id: set-version
+        run: |
+          if [[ -n "${{ github.event.inputs.deploy_version }}" ]]; then
+            echo "deploy_sha=${{ github.event.inputs.deploy_version }}" >> $GITHUB_OUTPUT
+          else
+            echo "deploy_sha=$(aws resourcegroupstaggingapi get-resources --tag-filters Key=deployment,Values=stable --resource-type-filters ecs:service --tag-filters Key=environment,Values=development --query 'ResourceTagMappingList[0].Tags[?Key==`version`].Value' --output text)" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Verify version exists
+        run: |
+          if [[ -z "${{ steps.set-version.outputs.deploy_sha }}" ]]; then
+            echo "No deployment version specified or found in development" && exit 1
+          fi
+
+  prepare-deployment:
+    needs: [get-deployment-version]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+      
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+      
+      - name: Tag frontend image for staging
+        run: |
+          aws ecr batch-get-image --repository-name ${{ env.ECR_REPOSITORY_FRONTEND }} --image-ids imageTag=development-${{ needs.get-deployment-version.outputs.deploy_sha }} --query 'images[].imageManifest' --output text | aws ecr put-image --repository-name ${{ env.ECR_REPOSITORY_FRONTEND }} --image-tag ${{ env.ENVIRONMENT }}-${{ needs.get-deployment-version.outputs.deploy_sha }} --image-tag ${{ env.ENVIRONMENT }}-latest --image-manifest "$"
+      
+      - name: Tag backend image for staging
+        run: |
+          aws ecr batch-get-image --repository-name ${{ env.ECR_REPOSITORY_BACKEND }} --image-ids imageTag=development-${{ needs.get-deployment-version.outputs.deploy_sha }} --query 'images[].imageManifest' --output text | aws ecr put-image --repository-name ${{ env.ECR_REPOSITORY_BACKEND }} --image-tag ${{ env.ENVIRONMENT }}-${{ needs.get-deployment-version.outputs.deploy_sha }} --image-tag ${{ env.ENVIRONMENT }}-latest --image-manifest "$"
+
+  deploy-infrastructure:
+    needs: [prepare-deployment, get-deployment-version]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+      
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+      
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+      
+      - name: Terraform Init
+        working-directory: ${{ env.TERRAFORM_DIR }}
+        run: terraform init
+      
+      - name: Terraform Validate
+        working-directory: ${{ env.TERRAFORM_DIR }}
+        run: terraform validate
+      
+      - name: Terraform Plan
+        working-directory: ${{ env.TERRAFORM_DIR }}
+        run: |
+          terraform plan \
+            -var="frontend_image=${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY_FRONTEND }}:${{ env.ENVIRONMENT }}-${{ needs.get-deployment-version.outputs.deploy_sha }}" \
+            -var="backend_image=${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY_BACKEND }}:${{ env.ENVIRONMENT }}-${{ needs.get-deployment-version.outputs.deploy_sha }}" \
+            -var-file=terraform.tfvars \
+            -out=tfplan
+      
+      - name: Terraform Apply
+        working-directory: ${{ env.TERRAFORM_DIR }}
+        run: terraform apply -auto-approve tfplan
+
+  deploy-blue-green:
+    needs: [deploy-infrastructure, get-deployment-version]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      
+      - name: Install AWS CLI
+        run: pip install awscli
+      
+      - name: Create new task definition for blue environment
+        run: |
+          aws ecs register-task-definition --family indivillage-frontend-blue --cli-input-json file://<(aws ecs describe-task-definition --task-definition indivillage-frontend-${{ env.ENVIRONMENT }} --query '{containerDefinitions: taskDefinition.containerDefinitions, family: "indivillage-frontend-blue", taskRoleArn: taskDefinition.taskRoleArn, executionRoleArn: taskDefinition.executionRoleArn, networkMode: taskDefinition.networkMode, volumes: taskDefinition.volumes, placementConstraints: taskDefinition.placementConstraints, requiresCompatibilities: taskDefinition.requiresCompatibilities, cpu: taskDefinition.cpu, memory: taskDefinition.memory}' --output json) && aws ecs register-task-definition --family indivillage-backend-blue --cli-input-json file://<(aws ecs describe-task-definition --task-definition indivillage-backend-${{ env.ENVIRONMENT }} --query '{containerDefinitions: taskDefinition.containerDefinitions, family: "indivillage-backend-blue", taskRoleArn: taskDefinition.taskRoleArn, executionRoleArn: taskDefinition.executionRoleArn, networkMode: taskDefinition.networkMode, volumes: taskDefinition.volumes, placementConstraints: taskDefinition.placementConstraints, requiresCompatibilities: taskDefinition.requiresCompatibilities, cpu: taskDefinition.cpu, memory: taskDefinition.memory}' --output json)
+      
+      - name: Deploy to blue environment
+        run: |
+          aws ecs update-service --cluster indivillage-${{ env.ENVIRONMENT }} --service indivillage-frontend-blue --task-definition indivillage-frontend-blue --force-new-deployment && aws ecs update-service --cluster indivillage-${{ env.ENVIRONMENT }} --service indivillage-backend-blue --task-definition indivillage-backend-blue --force-new-deployment
+      
+      - name: Wait for blue deployment stability
+        run: |
+          aws ecs wait services-stable --cluster indivillage-${{ env.ENVIRONMENT }} --services indivillage-frontend-blue indivillage-backend-blue
+
+  run-smoke-tests:
+    needs: [deploy-blue-green]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      
+      - name: Install dependencies
+        run: pip install -r ${{ env.BACKEND_DIR }}/requirements-dev.txt
+      
+      - name: Run smoke tests against blue environment
+        run: |
+          python ${{ env.BACKEND_DIR }}/scripts/smoke_tests.py --environment ${{ env.ENVIRONMENT }}-blue --api-url ${{ secrets.STAGING_BLUE_API_URL }} --web-url ${{ secrets.STAGING_BLUE_WEB_URL }}
+
+  run-integration-tests:
+    needs: [run-smoke-tests]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      
+      - name: Install dependencies
+        run: pip install -r ${{ env.BACKEND_DIR }}/requirements-dev.txt
+      
+      - name: Run integration tests against blue environment
+        run: |
+          python ${{ env.BACKEND_DIR }}/scripts/integration_tests.py --environment ${{ env.ENVIRONMENT }}-blue --api-url ${{ secrets.STAGING_BLUE_API_URL }} --web-url ${{ secrets.STAGING_BLUE_WEB_URL }}
+
+  run-performance-tests:
+    needs: [run-smoke-tests]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      
+      - name: Install k6
+        run: |
+          sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys C5AD17C747E3415A3642D57D77C6C491D6AC1D69
+          echo 'deb https://dl.k6.io/deb stable main' | sudo tee /etc/apt/sources.list.d/k6.list
+          sudo apt-get update
+          sudo apt-get install k6
+      
+      - name: Run performance tests with staging thresholds
+        run: |
+          k6 run ${{ env.BACKEND_DIR }}/scripts/performance_test.js --env API_URL=${{ secrets.STAGING_BLUE_API_URL }} --env WEB_URL=${{ secrets.STAGING_BLUE_WEB_URL }} --env ENVIRONMENT=staging
+
+  swap-environments:
+    needs: [run-integration-tests, run-performance-tests]
+    runs-on: ubuntu-latest
+    if: success()
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+      
+      - name: Update staging load balancer to point to blue environment
+        run: |
+          aws elbv2 modify-listener --listener-arn $(aws elbv2 describe-listeners --load-balancer-arn $(aws elbv2 describe-load-balancers --names indivillage-${{ env.ENVIRONMENT }} --query 'LoadBalancers[0].LoadBalancerArn' --output text) --query 'Listeners[0].ListenerArn' --output text) --default-actions Type=forward,TargetGroupArn=$(aws elbv2 describe-target-groups --names indivillage-${{ env.ENVIRONMENT }}-blue --query 'TargetGroups[0].TargetGroupArn' --output text)
+      
+      - name: Wait for traffic to stabilize
+        run: sleep 60
+      
+      - name: Tag successful deployment
+        run: |
+          aws resourcegroupstaggingapi tag-resources --resource-arn-list $(aws ecs describe-services --cluster indivillage-${{ env.ENVIRONMENT }} --services indivillage-frontend-blue --query 'services[0].serviceArn' --output text) $(aws ecs describe-services --cluster indivillage-${{ env.ENVIRONMENT }} --services indivillage-backend-blue --query 'services[0].serviceArn' --output text) --tags deployment=stable,version=${{ needs.get-deployment-version.outputs.deploy_sha }},environment=${{ env.ENVIRONMENT }}
+
+  finalize-deployment:
+    needs: [swap-environments]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+      
+      - name: Update green environment to match blue
+        run: |
+          aws ecs update-service --cluster indivillage-${{ env.ENVIRONMENT }} --service indivillage-frontend-${{ env.ENVIRONMENT }} --task-definition indivillage-frontend-blue --force-new-deployment && aws ecs update-service --cluster indivillage-${{ env.ENVIRONMENT }} --service indivillage-backend-${{ env.ENVIRONMENT }} --task-definition indivillage-backend-blue --force-new-deployment
+      
+      - name: Wait for green deployment stability
+        run: |
+          aws ecs wait services-stable --cluster indivillage-${{ env.ENVIRONMENT }} --services indivillage-frontend-${{ env.ENVIRONMENT }} indivillage-backend-${{ env.ENVIRONMENT }}
+      
+      - name: Create deployment record
+        run: |
+          aws dynamodb put-item --table-name indivillage-deployments --item '{"environment": {"S": "${{ env.ENVIRONMENT }}"}, "timestamp": {"S": "'$(date -u +"%Y-%m-%dT%H:%M:%SZ")'"}, "version": {"S": "${{ needs.get-deployment-version.outputs.deploy_sha }}"}, "status": {"S": "success"}, "deployed_by": {"S": "${{ github.actor }}"}}'
+        continue-on-error: true
+
+  rollback-deployment:
+    needs: [deploy-blue-green, run-smoke-tests, run-integration-tests, run-performance-tests]
+    runs-on: ubuntu-latest
+    if: failure() && (needs.run-smoke-tests.result == 'failure' || needs.run-integration-tests.result == 'failure' || needs.run-performance-tests.result == 'failure')
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+      
+      - name: Stop blue environment services
+        run: |
+          aws ecs update-service --cluster indivillage-${{ env.ENVIRONMENT }} --service indivillage-frontend-blue --desired-count 0 && aws ecs update-service --cluster indivillage-${{ env.ENVIRONMENT }} --service indivillage-backend-blue --desired-count 0
+      
+      - name: Create deployment failure record
+        run: |
+          aws dynamodb put-item --table-name indivillage-deployments --item '{"environment": {"S": "${{ env.ENVIRONMENT }}"}, "timestamp": {"S": "'$(date -u +"%Y-%m-%dT%H:%M:%SZ")'"}, "version": {"S": "${{ needs.get-deployment-version.outputs.deploy_sha }}"}, "status": {"S": "failed"}, "deployed_by": {"S": "${{ github.actor }}"}}'
+        continue-on-error: true
+
+  notify-deployment-status:
+    needs: [finalize-deployment, rollback-deployment]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Check deployment result
+        id: check-result
+        run: |
+          echo "status=${{ needs.finalize-deployment.result == 'success' && 'success' || 'failure' }}" >> $GITHUB_OUTPUT
+      
+      - name: Notify success
+        if: steps.check-result.outputs.status == 'success'
+        uses: slackapi/slack-github-action@v1.23.0
+        with:
+          channel-id: ${{ secrets.SLACK_CHANNEL_ID }}
+          slack-message: "✅ Staging deployment successful! Version: ${{ needs.get-deployment-version.outputs.deploy_sha }} | Environment: ${{ env.ENVIRONMENT }} | Web URL: ${{ secrets.STAGING_WEB_URL }}"
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+      
+      - name: Notify failure
+        if: steps.check-result.outputs.status == 'failure'
+        uses: slackapi/slack-github-action@v1.23.0
+        with:
+          channel-id: ${{ secrets.SLACK_CHANNEL_ID }}
+          slack-message: "❌ Staging deployment failed! Version: ${{ needs.get-deployment-version.outputs.deploy_sha }} | Environment: ${{ env.ENVIRONMENT }} | See workflow run: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
